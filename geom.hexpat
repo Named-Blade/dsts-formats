@@ -22,12 +22,12 @@ struct GeomHeader {
     u16 ibpm_count;//inverse bind pose matrices
     std::mem::AlignTo<0x10>;
     
-    u32 unknow_0x10;
+    u32 unknown_0x10;
     float center_point[3];
     float bbox_diag[3];
     padding[0x4];
-    u32 unknown_0x40;
-    u32 unknown_0x44;
+    u32 unknown_0x30;
+    u32 unknown_0x34;
     type::Size<u64> skeleton_size;
     padding[0x8];
     
@@ -138,7 +138,7 @@ struct VertexAttribute<auto Attributes> {
 
 struct Vertex<auto Attributes, auto AttNum, auto Size>{
     VertexAttribute<Attributes> vertexAttributes[AttNum];
-    padding[Size];//not actually pading, just defining size as @ definitions take zero space
+    padding[Size];//not actually padding, just defining size as @ definitions take zero space
 };
 struct Mesh<auto header> {
     MeshHeader meshHeader;
