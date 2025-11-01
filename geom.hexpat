@@ -195,9 +195,8 @@ struct ShaderSetting {
     u32 unknown_0x1C;
 };
 
-str alphabet = "0123456789abcdefghijklmnopqrstuvwxyz#$[]{}+@=&";
-
 fn encode(auto n) {
+    str alphabet = "0123456789abcdefghijklmnopqrstuvwxyz#$[]{}+@=&";
     str encoded = "";
     u32 value = n;
     while (value > 0){
