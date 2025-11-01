@@ -151,17 +151,27 @@ struct Mesh<auto header> {
     u32 max_to_read = 10;
     Vertex<meshAttributes, meshHeader.attribute_count, meshHeader.bytes_per_vertex> vertices[std::math::min(max_to_read, meshHeader.vertex_count)] @ meshHeader.vertices_offset;
     u8 vertices_actual[meshHeader.vertex_count * meshHeader.bytes_per_vertex] @ meshHeader.vertices_offset;
-        
+    //
     u32 matrix_palletes[meshHeader.matrix_palette_count] @ meshHeader.matrix_palette_offset;
     u16 indices[meshHeader.index_count] @ meshHeader.indices_offset;
 };
 
 struct ShaderUniform {
-    u8 data[0x20];
+    u8 payload[0x10];
+    u16 index;
+    u16 float_count;
+    u32 unknown_0x14;
+    u32 unknown_0x18;
+    u32 unknown_0x1C;
 };
 
 struct ShaderSetting {
-    u8 data[0x20];
+    u8 payload[0x10];
+    u16 index;
+    u16 unknown_0x12;
+    u32 unknown_0x14;
+    u32 unknown_0x18;
+    u32 unknown_0x1C;
 };
 
 struct Material<auto header> {
