@@ -6,6 +6,8 @@ import std.core;
 import std.math;
 import std.mem;
 import std.sys;
+import std.string;
+import std.array;
 import type.float16;
 import type.magic;
 import type.size;
@@ -193,14 +195,44 @@ struct ShaderSetting {
     u32 unknown_0x1C;
 };
 
-struct Line {
-    u8 data[56];
+str alphabet = "0123456789abcdefghijklmnopqrstuvwxyz#$[]{}+@=&";
+
+fn encode(auto n) {
+    str encoded = "";
+    u32 value = n;
+    while (value > 0){
+        u32 digit = value % 46;
+        value = value / 46;
+        encoded = alphabet[digit] + encoded;
+    }
+    u32 num = 6 - std::string::length(encoded);
+    str missing = "";
+    for (u32 i = 0, i < num, i = i + 1) {
+        missing = missing + alphabet[0];
+    }
+    return missing + encoded;
 };
+
+fn getShaderName(auto shader) {
+    str name = "";
+    for (u32 i = 0, i < 14, i = i + 1) {
+        if (i != 0 && i % 3 == 0) {
+            name = name + "_" +encode(shader.name_data[i]);
+        } else {
+            name = name + encode(shader.name_data[i]);
+        }
+    }
+    return name;
+};
+
+struct Shader {
+    u32 name_data[14];
+} [[format("getShaderName")]];
 
 struct Material<auto header> {
     u32 name_hash;
     
-    Line lines[14];
+    Shader shaders[14];
     
     u32 unknown_0x314;
     u32 unknown_0x318;
