@@ -27,7 +27,7 @@ struct GeomHeader {
     float bbox_diag[3];
     padding[0x4];
     u32 unknown_0x30;
-    u32 unknown_0x34;
+    u32 unknown_0x34;//nonzero means .sprk file exists and 0x30 is always 9
     type::Size<u64> skeleton_size;
     padding[0x8];
     
@@ -79,7 +79,7 @@ struct MeshHeader {
     float bounding_sphere_radius;
     float centre[3];
     float bbox[3];
-    u64 unknown_mesh_data_offset;
+    u64 controller_offset;
     padding[0x8];
 };
 
