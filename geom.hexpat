@@ -140,8 +140,8 @@ struct VertexAttribute<auto Attributes> {
 
 struct Vertex<auto Attributes, auto AttNum, auto Size>{
     VertexAttribute<Attributes> vertexAttributes[AttNum];
-    padding[Size];//not actually padding, just defining size as @ definitions take zero space
-};
+} [[fixed_size(Size)]] ;
+
 struct Mesh<auto header> {
     MeshHeader meshHeader;
     
@@ -167,8 +167,7 @@ struct ShaderPayload<auto Count> {
     } else {
         float floats[Count] @ base;
     }
-    padding[0x10];//not padding, just size
-};
+} [[fixed_size(0x10)]] ;
 
 struct ShaderUniform<auto header> {
     u16 float_count @ std::ptr::relative_to_parent(0) + sizeof(ShaderPayload<0>) + sizeof(u16);
@@ -226,7 +225,7 @@ fn getShaderName(auto shader) {
 
 struct Shader {
     u32 name_data[14];
-} [[format("getShaderName")]];
+} [[format("getShaderName"),sealed]];
 
 struct Material<auto header> {
     u32 name_hash;
