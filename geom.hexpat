@@ -156,10 +156,29 @@ struct Mesh<auto header> {
     u16 indices[meshHeader.index_count] @ meshHeader.indices_offset;
 };
 
-struct ShaderUniform {
-    u8 payload[0x10];
+struct ShaderPayload<auto Count> {
+    u64 base = std::ptr::relative_to_parent(0);
+    if (Count == 0) {
+        u64 name_offset @ base;
+        u32 unk0x8 @ base + 0x8;
+        u32 unk0xC @ base + 0xC;
+    } else {
+        float floats[Count] @ base;
+    }
+    padding[0x10];//not padding, just size
+};
+
+struct ShaderUniform<auto header> {
+    u16 float_count @ std::ptr::relative_to_parent(0) + sizeof(ShaderPayload<0>) + sizeof(u16);
+    ShaderPayload<float_count> payload;
+    
+    if (std::core::has_member(payload, "name_offset")) {
+        char texture_name[] @ header.strings_offset + payload.name_offset;
+    }
+    
     u16 index;
-    u16 float_count;
+    padding[0x2];//u16 float_count;
+    
     u32 unknown_0x14;
     u32 unknown_0x18;
     u32 unknown_0x1C;
@@ -190,7 +209,7 @@ struct Material<auto header> {
     u16 unknown_0x324;
     u16 unknown_0x326;
     
-    ShaderUniform shader_uniforms[uniform_count];
+    ShaderUniform<header> shader_uniforms[uniform_count];
     ShaderSetting shader_settings[setting_count];
 };
 
