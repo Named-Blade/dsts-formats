@@ -156,8 +156,32 @@ struct Mesh<auto header> {
     u16 indices[meshHeader.index_count] @ meshHeader.indices_offset;
 };
 
+struct ShaderUniform {
+    u8 data[0x20];
+};
+
+struct ShaderSetting {
+    u8 data[0x20];
+};
+
 struct Material<auto header> {
-    //placeholder
+    u32 name_hash;//???
+    
+    u8 lines[56 * 14];
+    
+    u32 unknown_0x314;
+    u32 unknown_0x318;
+    u32 unknown_0x31c;
+    
+    u8 uniform_count;
+    u8 setting_count;
+    std::mem::AlignTo<0x4>;
+    
+    u16 unknown_0x324;
+    u16 unknown_0x326;
+    
+    ShaderUniform shader_uniforms[uniform_count];
+    ShaderSetting shader_settings[setting_count];
 };
 
 struct Light<auto header> {
