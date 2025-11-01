@@ -159,7 +159,7 @@ struct Mesh<auto header> {
 struct ShaderPayload<auto Count> {
     u64 base = std::ptr::relative_to_parent(0);
     if (Count == 0) {
-        u64 name_offset @ base;
+        u64 texture_name_offset @ base;
         u32 unk0x8 @ base + 0x8;
         u32 unk0xC @ base + 0xC;
     } else {
@@ -172,8 +172,8 @@ struct ShaderUniform<auto header> {
     u16 float_count @ std::ptr::relative_to_parent(0) + sizeof(ShaderPayload<0>) + sizeof(u16);
     ShaderPayload<float_count> payload;
     
-    if (std::core::has_member(payload, "name_offset")) {
-        char texture_name[] @ header.strings_offset + payload.name_offset;
+    if (std::core::has_member(payload, "texture_name_offset")) {
+        char texture_name[] @ header.strings_offset + payload.texture_name_offset;
     }
     
     u16 index;
@@ -193,10 +193,14 @@ struct ShaderSetting {
     u32 unknown_0x1C;
 };
 
+struct Line {
+    u8 data[56];
+};
+
 struct Material<auto header> {
-    u32 name_hash;//???
+    u32 name_hash;
     
-    u8 lines[56 * 14];
+    Line lines[14];
     
     u32 unknown_0x314;
     u32 unknown_0x318;
@@ -259,10 +263,7 @@ struct BoneParentVector<auto Size>{
 };
 
 struct Quaternion{
-    float x;
-    float y;
-    float z;
-    float w;
+    float x, y, z ,w;
 };
 
 struct BoneTransform {
