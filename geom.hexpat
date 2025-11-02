@@ -8,10 +8,12 @@ import std.mem;
 import std.sys;
 import std.string;
 import std.array;
+import std.file;
 import type.float16;
 import type.magic;
 import type.size;
 import type.byte;
+import hex.core;
 
 struct GeomHeader {
     u32 version;
@@ -143,7 +145,7 @@ struct Vertex<auto Attributes, auto AttNum, auto Size>{
 } [[fixed_size(Size)]] ;
 
 struct Controller {
-    //placeholder
+    std::unimplemented();
 };
 
 struct Mesh<auto header> {
@@ -162,6 +164,33 @@ struct Mesh<auto header> {
     u16 indices[meshHeader.index_count] @ meshHeader.indices_offset;
 
     if (meshHeader.controller_offset > 0) Controller controller @ controller_offset;
+};
+
+u32 shaderTableSize = 791;
+u32 shaderParamSize = 0x38;
+
+struct ShaderParamDef {
+    u32 id;
+    u8 unk[0x14];
+    char name[] @  std::ptr::relative_to_parent(0) + 0x18;
+} [[fixed_size(shaderParamSize)]] ;
+
+std::file::Handle shaderTableHandle = std::file::open("shader_table.bin", std::file::Mode::Read);//add to imHex's folder
+str shaderTableStr = std::file::read(shaderTableHandle, shaderParamSize * shaderTableSize);
+std::file::close(shaderTableHandle);
+
+u128 shaderTableSectionHandle = std::mem::create_section("shaderParams");
+std::mem::set_section_size(shaderTableSectionHandle, shaderParamSize * shaderTableSize);
+std::mem::copy_value_to_section(shaderTableStr, shaderTableSectionHandle, 0x0);
+
+ShaderParamDef shaderParams[shaderTableSize] @ 0x0 in shaderTableSectionHandle;
+
+fn getParamName(auto id) {
+    for (u32 i = 0, i < shaderTableSize, i = i+1){
+        if (id == shaderParams[i].id) {
+            return shaderParams[i].name;
+        }
+    }
 };
 
 struct ShaderPayload<auto Count> {
@@ -183,7 +212,8 @@ struct ShaderUniform<auto header> {
         char texture_name[] @ header.strings_offset + payload.texture_name_offset;
     }
     
-    u16 parameter_id;//from shader parameter table, todo add name here
+    u16 parameter_id;
+    str parameter_name = getParamName(parameter_id) [[export]];
     padding[sizeof(u16)];//u16 float_count;
     
     u32 unknown_0x14;
@@ -193,7 +223,8 @@ struct ShaderUniform<auto header> {
 
 struct ShaderSetting {
     u8 payload[0x10];
-    u16 parameter_id;//from shader parameter table, todo add name here
+    u16 parameter_id;
+    str parameter_name = getParamName(parameter_id) [[export]];
     u16 unknown_0x12;
     u32 unknown_0x14;
     u32 unknown_0x18;
@@ -254,11 +285,11 @@ struct Material<auto header> {
 };
 
 struct Light<auto header> {
-    //placeholder
+    std::unimplemented();
 };
 
 struct Camera<auto header> {
-    //placeholder
+    std::unimplemented();
 };
 
 struct Ibpm<auto header> {
