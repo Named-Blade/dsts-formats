@@ -50,14 +50,20 @@ struct GeomHeader {
     padding[0x8];
 };
 
+// enum PrimitiveType : u16 {
+//     Points,
+//     Lines,
+//     Line_loop,
+//     Line_strip,
+//     Triangles,
+//     Triangle_strip,
+//     Triangle_fan,
+// };
+
 enum PrimitiveType : u16 {
-    Points,
-    Lines,
-    Line_loop,
-    Line_strip,
-    Triangles,
     Triangle_strip,
-    Triangle_fan,
+    Triangles,
+    //and others
 };
 
 struct MeshHeader {
