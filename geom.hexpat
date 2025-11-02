@@ -24,12 +24,12 @@ struct GeomHeader {
     u16 ibpm_count;//inverse bind pose matrices
     std::mem::AlignTo<0x10>;
     
-    u32 unknown_0x10;
+    u32 unknown_0x10;//always zero in existing geoms
     float center_point[3];
     float bbox_diag[3];
     padding[0x4];
-    u32 unknown_0x30;
-    u32 unknown_0x34;//nonzero means .sprk file exists and 0x30 is always 9
+    u32 unknown_0x30;//all existing geoms use one of {5, 8, 9, 10, 11}.
+    u32 unknown_0x34;//nonzero means a .sprk file exists and 0x30 is always 9, likely a particle effect?
     type::Size<u64> skeleton_size;
     padding[0x8];
     
@@ -62,7 +62,7 @@ struct MeshHeader {
     u64 vertices_offset;
     u64 indices_offset;
     u64 matrix_palette_offset;
-    u64 unknown_0x18;
+    u64 unknown_0x18;//Always zero in existing meshes
     u64 attributes_offset;
     u16 matrix_palette_count;
     u16 attribute_count;
@@ -76,8 +76,8 @@ struct MeshHeader {
     u32 material_idx;
     u32 vertex_count;
     u32 index_count;
-    u32 unknown_0x4C;
-    u32 unknown_0x50;
+    u32 unknown_0x4C;//Always zero in existing meshes
+    u32 unknown_0x50;//Always zero in existing meshes
     float bounding_sphere_radius;
     float centre[3];
     float bbox[3];
@@ -142,6 +142,10 @@ struct Vertex<auto Attributes, auto AttNum, auto Size>{
     VertexAttribute<Attributes> vertexAttributes[AttNum];
 } [[fixed_size(Size)]] ;
 
+struct Controller {
+    //placeholder
+};
+
 struct Mesh<auto header> {
     MeshHeader meshHeader;
     
@@ -149,13 +153,15 @@ struct Mesh<auto header> {
     
     MeshAttribute meshAttributes[meshHeader.attribute_count] @ meshHeader.attributes_offset;
     //Vertex<meshAttributes, meshHeader.attribute_count, meshHeader.bytes_per_vertex> vertices[meshHeader.vertex_count] @ meshHeader.vertices_offset;   
-    //for testing, as fully reading eats memory 
-    u32 max_to_read = 10;
-    Vertex<meshAttributes, meshHeader.attribute_count, meshHeader.bytes_per_vertex> vertices[std::math::min(max_to_read, meshHeader.vertex_count)] @ meshHeader.vertices_offset;
-    u8 vertices_actual[meshHeader.vertex_count * meshHeader.bytes_per_vertex] @ meshHeader.vertices_offset;
-    //
+    //for testing, as fully reading eats memory {
+        u32 max_to_read = 10;
+        Vertex<meshAttributes, meshHeader.attribute_count, meshHeader.bytes_per_vertex> vertices[std::math::min(max_to_read, meshHeader.vertex_count)] @ meshHeader.vertices_offset;
+        u8 vertices_actual[meshHeader.vertex_count * meshHeader.bytes_per_vertex] @ meshHeader.vertices_offset;
+    //}
     u32 matrix_palletes[meshHeader.matrix_palette_count] @ meshHeader.matrix_palette_offset;
     u16 indices[meshHeader.index_count] @ meshHeader.indices_offset;
+
+    if (meshHeader.controller_offset > 0) Controller controller @ controller_offset;
 };
 
 struct ShaderPayload<auto Count> {
@@ -177,8 +183,8 @@ struct ShaderUniform<auto header> {
         char texture_name[] @ header.strings_offset + payload.texture_name_offset;
     }
     
-    u16 index;
-    padding[0x2];//u16 float_count;
+    u16 parameter_id;//from shader parameter table, todo add name here
+    padding[sizeof(u16)];//u16 float_count;
     
     u32 unknown_0x14;
     u32 unknown_0x18;
@@ -187,7 +193,7 @@ struct ShaderUniform<auto header> {
 
 struct ShaderSetting {
     u8 payload[0x10];
-    u16 index;
+    u16 parameter_id;//from shader parameter table, todo add name here
     u16 unknown_0x12;
     u32 unknown_0x14;
     u32 unknown_0x18;
@@ -281,6 +287,7 @@ struct NameOffsets<auto header> {
     u64 bone_name_offsets_offset;
     u64 material_name_offsets_offset;
     
+    //note that names are not necessarily in the same order as their objects, use the hashes instead of indexing
     u64 bone_name_offsets[bone_name_count] @ bone_name_offsets_offset;
     u64 material_name_offsets[material_name_count] @ material_name_offsets_offset;
     
