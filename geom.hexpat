@@ -134,6 +134,8 @@ struct VertexAttribute<auto Attributes> {
     u32 count = Attributes[index].count;
     Dtype type = Attributes[index].dtype;
     
+    Atype atype = Attributes[index].atype [[export]];
+    
     match(type) {
         (Dtype::uByte): u8 values[count] @ pos;
         (Dtype::sByte): s8 values[count] @ pos;
@@ -203,7 +205,7 @@ struct ShaderPayload<auto Count> {
     u64 base = std::ptr::relative_to_parent(0);
     if (Count == 0) {
         u64 texture_name_offset @ base;
-        u32 unk0x8 @ base + 0x8;
+        u32 texture_name_length @ base + 0x8;
         u32 unk0xC @ base + 0xC;
     } else {
         float floats[Count] @ base;
@@ -216,6 +218,8 @@ struct ShaderUniform<auto header> {
     
     if (std::core::has_member(payload, "texture_name_offset")) {
         char texture_name[] @ header.strings_offset + payload.texture_name_offset;
+        u32 hex00 = 1;
+        std::assert(std::string::length(texture_name) -hex00 == payload.texture_name_length,"texture lenght doesn't match");
     }
     
     u16 parameter_id;
