@@ -46,7 +46,7 @@ struct GeomHeader {
     u64 strings_offset;
     u64 clut_offset;//color lookup table
     padding[0x8];
-    u64 name_offsets_offset;
+    u64 name_table_offset;
     u64 skeleton_offset;
     padding[0x8];
 };
@@ -274,8 +274,19 @@ struct Shader {
     u32 name_data[14];
 } [[format("getShaderName"),sealed]];
 
-struct Material<auto header> {
+fn getName(auto hash, auto name_table, auto size) {
+    for (u32 i = 0, i < size, i = i + 1) {
+        if (name_table[i].hash == hash) {
+            return i;
+        }
+    }
+};
+
+struct Material<auto header, auto name_table> {
     u32 name_hash;
+    if (name_hash > 0) {
+        str name = name_table.material_names[getName(name_hash,name_table.material_names, name_table.material_name_count)].name [[export]];
+    }
     
     Shader shaders[14];
     
@@ -323,7 +334,7 @@ struct Name<auto Base, auto Offsets> {
     u32 hash = std::hash::crc32(name, 0xFFFFFFFF, 0x04C11DB7, 0, true, true) [[export]];
 };
 
-struct NameOffsets<auto header> {
+struct NameTable<auto header> {
     u32 bone_name_count;
     u32 material_name_count;
     u64 bone_name_offsets_offset;
@@ -351,7 +362,14 @@ struct BoneTransform {
     float scale[4];
 };
 
-struct Skeleton {
+struct BoneName<auto name_table> {
+    u32 name_hash;
+    if (name_hash > 0) {
+        str name = name_table.bone_names[getName(name_hash,name_table.bone_names, name_table.bone_name_count)].name [[export]];
+    }
+};
+
+struct Skeleton<auto name_table> {
     type::Magic<"60SE"> magic;
     type::Size<u64> skeleton_file_size;
     u32 hashes_section_bytecount;
@@ -366,7 +384,7 @@ struct Skeleton {
     s16 parent_bones[bone_count] @ parent_bones_offset + std::ptr::relative_to_pointer(0) - sizeof(parent_bones_offset);
     
     u32 bone_name_hashes_offset;
-    u32 bone_name_hashes[bone_count] @ bone_name_hashes_offset + std::ptr::relative_to_pointer(0) - sizeof(bone_name_hashes_offset);
+    BoneName<name_table> bone_names[bone_count] @ bone_name_hashes_offset + std::ptr::relative_to_pointer(0) - sizeof(bone_name_hashes_offset);
     
     u32 float_channel_array_indices_offset;
     u32 float_channel_array_indices[float_channel_count] @ float_channel_array_indices_offset + std::ptr::relative_to_pointer(0) - sizeof(float_channel_array_indices_offset);
@@ -386,15 +404,17 @@ struct Skeleton {
 struct Geom {
     GeomHeader header;
     
+    if (header.name_table_offset > 0) NameTable<header> name_table @ header.name_table_offset;
+    
     if (header.mesh_offset > 0) Mesh<header> meshes[header.mesh_count] @ header.mesh_offset;
-    if (header.material_offset > 0) Material<header> materials[header.material_count] @ header.material_offset;
+    if (header.material_offset > 0) Material<header, name_table> materials[header.material_count] @ header.material_offset;
     if (header.light_offset > 0) Light<header> lights[header.light_count] @ header.light_offset;
     if (header.camera_offset > 0) Camera<header> cameras[header.camera_count] @ header.camera_offset;
     if (header.ibpm_offset > 0) Ibpm<header> ibpms[header.ibpm_count] @ header.ibpm_offset;
     
     if (header.clut_offset > 0) Clut clut @ header.clut_offset;
-    if (header.name_offsets_offset > 0) NameOffsets<header> nameOffsets @ header.name_offsets_offset;
-    if (header.skeleton_offset > 0) Skeleton skeleton @ header.skeleton_offset;
+    //name_table goes here in binary
+    if (header.skeleton_offset > 0) Skeleton<name_table> skeleton @ header.skeleton_offset;
 };
 
 Geom geom @ 0x0;
