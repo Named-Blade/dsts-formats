@@ -24,10 +24,10 @@ int main(int argc, char* argv[]) {
     dsts::geom::Geom geom;
     geom.read(file);
 
-    std::cout << geom.skeleton.bone_transforms[5].position[0] << std::endl;
-    std::cout << geom.skeleton.bone_transforms[5].position[1] << std::endl;
-    std::cout << geom.skeleton.bone_transforms[5].position[2] << std::endl;
-    std::cout << geom.skeleton.bone_transforms[5].position[3] << std::endl;
+    std::cout << geom.skeleton.bones[5].transform.position[0] << std::endl;
+    std::cout << geom.skeleton.bones[5].transform.position[1] << std::endl;
+    std::cout << geom.skeleton.bones[5].transform.position[2] << std::endl;
+    std::cout << geom.skeleton.bones[5].transform.position[3] << std::endl;
 
     file.close();
 }
