@@ -181,7 +181,7 @@ u32 shaderParamSize = 0x38;
 struct ShaderParamDef {
     u32 id;
     u8 unk[0x14];
-    char name[while(std::mem::read_unsigned($, 1) != 0x00)] @  std::ptr::relative_to_parent(0) + 0x18;
+    char name[] @  std::ptr::relative_to_parent(0) + 0x18;
 } [[fixed_size(shaderParamSize)]] ;
 
 std::file::Handle shaderTableHandle = std::file::open("shader_table.bin", std::file::Mode::Read);//add to imHex's folder
