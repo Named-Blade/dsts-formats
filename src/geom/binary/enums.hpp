@@ -1,12 +1,9 @@
 #pragma once
 
-namespace dsts
+namespace dsts::geom::binary
 {   
-    namespace binary 
-    {
-        enum PrimitiveType : uint16_t {
-            Triangle_strip,
-            Triangles
-        };
-    }
+    enum PrimitiveType : uint16_t {
+        Triangle_strip,
+        Triangles
+    };
 }
