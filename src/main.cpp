@@ -1,8 +1,11 @@
+#include <cstddef>
 #include <iostream>
 #include <fstream>
 #include <string>
 
-#include "geom/geom.hpp"
+#include "geom/binary/geom.hpp"
+#include "geom/binary/mesh.hpp"
+#include "geom/binary/skeleton.hpp"
 
 using namespace std;
 
@@ -24,5 +27,9 @@ int main(int argc, char* argv[]) {
     dsts::binary::GeomHeader header;
     file.read(reinterpret_cast<char*>(&header), sizeof(dsts::binary::GeomHeader));
 
-    std::cout << "Version " << header.version << std::endl;
+    file.seekg(header.mesh_offset);
+    dsts::binary::Mesh *meshes = new dsts::binary::Mesh[header.mesh_count];
+    file.read(reinterpret_cast<char*>(meshes), sizeof(dsts::binary::Mesh) * header.mesh_count);
+
+    std::cout << meshes[3].attribute_count << std::endl;
 }
