@@ -4,12 +4,7 @@
 #include <fstream>
 #include <string>
 
-#include "geom/binary/clut.hpp"
-#include "geom/binary/geom.hpp"
-#include "geom/binary/material.hpp"
-#include "geom/binary/mesh.hpp"
-#include "geom/binary/name_table.hpp"
-#include "geom/binary/skeleton.hpp"
+#include "geom/geom.cpp"
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -26,14 +21,13 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    dsts::geom::binary::GeomHeader header;
-    file.read(reinterpret_cast<char*>(&header), sizeof(dsts::geom::binary::GeomHeader));
+    dsts::geom::Geom geom;
+    geom.read(file);
 
-    assert(header.version == 316);
+    assert(geom.header.version == 316);
+    assert(geom.skeleton.header.magic == "60SE");
 
-    file.seekg(header.mesh_offset);
-    dsts::geom::binary::MeshHeader *meshes = new dsts::geom::binary::MeshHeader[header.mesh_count];
-    file.read(reinterpret_cast<char*>(meshes), sizeof(dsts::geom::binary::MeshHeader) * header.mesh_count);
+    std::cout << "FINE" << std::endl;
 
-    std::cout << meshes[3].attribute_count << std::endl;
+    file.close();
 }

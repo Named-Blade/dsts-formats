@@ -1,5 +1,7 @@
 #pragma once
 
+#include "enums.hpp"
+
 namespace dsts::geom::binary
 {  
     #pragma pack(push, 1)
