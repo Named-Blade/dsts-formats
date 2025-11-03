@@ -9,6 +9,7 @@ import std.sys;
 import std.string;
 import std.array;
 import std.file;
+import std.hash;
 import type.float16;
 import type.magic;
 import type.size;
@@ -159,7 +160,7 @@ struct Controller {
 struct Mesh<auto header> {
     MeshHeader meshHeader;
     
-    if (meshHeader.name_offset > 0) char name[] @ header.strings_offset + meshHeader.name_offset;
+    if (meshHeader.name_offset > 0) char name[while(std::mem::read_unsigned($, 1) != 0x00)] @ header.strings_offset + meshHeader.name_offset;
     
     MeshAttribute meshAttributes[meshHeader.attribute_count] @ meshHeader.attributes_offset;
     //Vertex<meshAttributes, meshHeader.attribute_count, meshHeader.bytes_per_vertex> vertices[meshHeader.vertex_count] @ meshHeader.vertices_offset;   
@@ -180,7 +181,7 @@ u32 shaderParamSize = 0x38;
 struct ShaderParamDef {
     u32 id;
     u8 unk[0x14];
-    char name[] @  std::ptr::relative_to_parent(0) + 0x18;
+    char name[while(std::mem::read_unsigned($, 1) != 0x00)] @  std::ptr::relative_to_parent(0) + 0x18;
 } [[fixed_size(shaderParamSize)]] ;
 
 std::file::Handle shaderTableHandle = std::file::open("shader_table.bin", std::file::Mode::Read);//add to imHex's folder
@@ -217,9 +218,8 @@ struct ShaderUniform<auto header> {
     ShaderPayload<float_count> payload;
     
     if (std::core::has_member(payload, "texture_name_offset")) {
-        char texture_name[] @ header.strings_offset + payload.texture_name_offset;
-        u32 hex00 = 1;
-        std::assert(std::string::length(texture_name) -hex00 == payload.texture_name_length,"texture lenght doesn't match");
+        char texture_name[while(std::mem::read_unsigned($, 1) != 0x00)] @ header.strings_offset + payload.texture_name_offset;
+        std::assert(std::string::length(texture_name) == payload.texture_name_length,"texture lenght doesn't match");
     }
     
     u16 parameter_id;
@@ -319,7 +319,8 @@ struct Clut {
 struct Name<auto Base, auto Offsets> {
     u32 index = std::core::array_index();
     u64 offset = Offsets[index];
-    char name[] @ Base + offset;
+    char name[while(std::mem::read_unsigned($, 1) != 0x00)] @ Base + offset;
+    u32 hash = std::hash::crc32(name, 0xFFFFFFFF, 0x04C11DB7, 0, true, true) [[export]];
 };
 
 struct NameOffsets<auto header> {
