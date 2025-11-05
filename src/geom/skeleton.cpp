@@ -24,7 +24,7 @@ namespace dsts::geom
 
     class Skeleton {
         public:
-            std::vector<Bone> bones;
+            std::vector<std::unique_ptr<Bone>> bones;
 
             void read(std::istream& f, int skeleton_base = 0, int base = 0){
                 binary::SkeletonHeader header;
@@ -42,7 +42,7 @@ namespace dsts::geom
 
                 bones.reserve(header.bone_count);
                 for (int i = 0; i < header.bone_count; i++) {
-                    Bone bone;
+                    std::unique_ptr<Bone> bone_ptr = std::make_unique<Bone>();
 
                     f.seekg(header.bone_transform_offset
                         + (i * sizeof(binary::BoneTransform))
@@ -50,7 +50,7 @@ namespace dsts::geom
                         + skeleton_base 
                         + offsetof(binary::SkeletonHeader, bone_transform_offset)
                     );
-                    f.read(reinterpret_cast<char*>(&bone.transform), sizeof(binary::BoneTransform));
+                    f.read(reinterpret_cast<char*>(&(*bone_ptr).transform), sizeof(binary::BoneTransform));
 
 
                     f.seekg(header.bone_name_hashes_offset
@@ -59,9 +59,9 @@ namespace dsts::geom
                         + skeleton_base 
                         + offsetof(binary::SkeletonHeader, bone_name_hashes_offset)
                     );
-                    f.read(reinterpret_cast<char*>(&bone.name_hash), sizeof(uint32_t));
+                    f.read(reinterpret_cast<char*>(&(*bone_ptr).name_hash), sizeof(uint32_t));
 
-                    bones.push_back(bone);
+                    bones.push_back(std::move(bone_ptr));
                 }
 
                 for (int i = 0; i < header.bone_count; i++) {
@@ -78,12 +78,10 @@ namespace dsts::geom
                     int bone = boneParentPairs[parent_bone][0];
                     int parent = boneParentPairs[parent_bone][1];
 
-                    if (parent != 32767) {
-                        bones[bone].parent = &bones[parent];
+                    if (parent != 0x7FFF) {
+                        bones[bone]->parent = bones[parent].get();
                     }
                 }
-
-                std::cout << bones[3].parent->name_hash;
                 
             }
     };
