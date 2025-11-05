@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
 
     std::string filename = argv[1];
 
-    std::ifstream file(filename);
+    std::ifstream file(filename, std::ios::binary);
 
     if (!file.is_open()) {
         std::cerr << "Error: Could not open file " << filename << "\n";
@@ -23,11 +23,6 @@ int main(int argc, char* argv[]) {
 
     dsts::geom::Geom geom;
     geom.read(file);
-
-    std::cout << geom.skeleton.bones[5].transform.position[0] << std::endl;
-    std::cout << geom.skeleton.bones[5].transform.position[1] << std::endl;
-    std::cout << geom.skeleton.bones[5].transform.position[2] << std::endl;
-    std::cout << geom.skeleton.bones[5].transform.position[3] << std::endl;
 
     file.close();
 }

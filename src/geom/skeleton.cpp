@@ -1,8 +1,12 @@
 #pragma once
 
+#include <iostream>
+
 #include <cstddef> 
 #include <vector>
+#include <array>
 #include <string>
+#include <memory>
 
 #include "binary/skeleton.hpp"
 
@@ -10,37 +14,77 @@ namespace dsts::geom
 {  
     class Bone {
         public:
-        unsigned int name_hash;
-        std::string name;
+            uint32_t name_hash;
+            std::string name;
 
-        binary::BoneTransform transform;
-        
-        Bone* parent;
+            binary::BoneTransform transform;
+            
+            Bone* parent = nullptr;
     };
 
     class Skeleton {
         public:
-        binary::SkeletonHeader header;
+            std::vector<Bone> bones;
 
-        std::vector<Bone> bones;
+            void read(std::istream& f, int skeleton_base = 0, int base = 0){
+                binary::SkeletonHeader header;
 
-        void read(std::istream& f, int skeleton_base, int base = 0){
-            f.seekg(base+skeleton_base);
-            f.read(reinterpret_cast<char*>(&header), sizeof(binary::SkeletonHeader));
+                f.seekg(base+skeleton_base);
+                f.read(reinterpret_cast<char*>(&header), sizeof(binary::SkeletonHeader));
 
-            for (int i = 0; i < header.bone_count; i++) {
-                Bone bone;
+                assert(header.bone_parent_vector_size == 2);
+                std::vector<std::array<uint16_t, 2>> boneParentPairs;
+                for (int i = 0; i < header.bone_parent_pairs_count; i++) {
+                    std::array<uint16_t, 2> bone_vector;
+                    f.read(reinterpret_cast<char*>(bone_vector.data()), sizeof(uint16_t) * 2);
+                    boneParentPairs.push_back(bone_vector);
+                }
 
-                f.seekg(header.bone_transform_offset
-                    + (i * sizeof(binary::BoneTransform))
-                    + base 
-                    + skeleton_base 
-                    + offsetof(binary::SkeletonHeader, bone_transform_offset)
-                );
-                f.read(reinterpret_cast<char*>(&bone.transform), sizeof(binary::BoneTransform));
+                bones.reserve(header.bone_count);
+                for (int i = 0; i < header.bone_count; i++) {
+                    Bone bone;
 
-                bones.push_back(bone);
+                    f.seekg(header.bone_transform_offset
+                        + (i * sizeof(binary::BoneTransform))
+                        + base 
+                        + skeleton_base 
+                        + offsetof(binary::SkeletonHeader, bone_transform_offset)
+                    );
+                    f.read(reinterpret_cast<char*>(&bone.transform), sizeof(binary::BoneTransform));
+
+
+                    f.seekg(header.bone_name_hashes_offset
+                        + (i * sizeof(uint32_t))
+                        + base 
+                        + skeleton_base 
+                        + offsetof(binary::SkeletonHeader, bone_name_hashes_offset)
+                    );
+                    f.read(reinterpret_cast<char*>(&bone.name_hash), sizeof(uint32_t));
+
+                    bones.push_back(bone);
+                }
+
+                for (int i = 0; i < header.bone_count; i++) {
+                    uint16_t parent_bone;
+
+                    f.seekg(header.parent_bones_offset
+                        + (i * sizeof(uint16_t))
+                        + base 
+                        + skeleton_base 
+                        + offsetof(binary::SkeletonHeader, parent_bones_offset)
+                    );
+                    f.read(reinterpret_cast<char*>(&parent_bone), sizeof(uint16_t));
+
+                    int bone = boneParentPairs[parent_bone][0];
+                    int parent = boneParentPairs[parent_bone][1];
+
+                    if (parent != 32767) {
+                        bones[bone].parent = &bones[parent];
+                    }
+                }
+
+                std::cout << bones[3].parent->name_hash;
+                
             }
-        }
     };
 }

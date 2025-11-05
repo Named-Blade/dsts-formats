@@ -14,16 +14,15 @@ namespace dsts::geom
 {  
     class Geom {
         public:
-        binary::GeomHeader header;
-        
+            Skeleton skeleton;
 
-        Skeleton skeleton;
+            void read(std::istream& f, int base = 0){
+                binary::GeomHeader header;
 
-        void read(std::istream& f, int base = 0){
-            f.seekg(base);
-            f.read(reinterpret_cast<char*>(&header), sizeof(binary::GeomHeader));
+                f.seekg(base);
+                f.read(reinterpret_cast<char*>(&header), sizeof(binary::GeomHeader));
 
-            skeleton.read(f, header.skeleton_offset, base);
-        }
+                skeleton.read(f, header.skeleton_offset, base);
+            }
     };
 }
