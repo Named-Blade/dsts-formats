@@ -32,7 +32,7 @@ namespace dsts::geom::binary
         uint32_t bone_parent_pairs_count;
     };
 
-    struct Ibmp {
+    struct Ibpm {
         float matrix[12];
     };
 

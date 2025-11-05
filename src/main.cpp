@@ -25,7 +25,4 @@ int main(int argc, char* argv[]) {
     dsts::geom::Geom geom;
     geom.read(file);
     file.close();
-
-    Matrix inv = dsts::geom::computeInverseBindPose(geom.skeleton.bones[21].get());
-    inv.print();
 }
