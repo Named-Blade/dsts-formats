@@ -19,7 +19,7 @@ namespace dsts::geom
 
             binary::BoneTransform transform;
             
-            Bone* parent = nullptr;
+            std::shared_ptr<Bone> parent;
     };
 
     class FloatChannel {
@@ -31,7 +31,7 @@ namespace dsts::geom
 
     class Skeleton {
         public:
-            std::vector<std::unique_ptr<Bone>> bones;
+            std::vector<std::shared_ptr<Bone>> bones;
             std::vector<FloatChannel> float_channels;
 
             void read(std::istream& f, int skeleton_base = 0, int base = 0){
@@ -65,7 +65,7 @@ namespace dsts::geom
 
 
                     for (int i = 0; i < header.bone_count; i++) {
-                        std::unique_ptr<Bone> bone_ptr = std::make_unique<Bone>();
+                        std::shared_ptr<Bone> bone_ptr = std::make_shared<Bone>();
 
                         bone_ptr->transform = transforms[i];
                         bone_ptr->name_hash = name_hashes[i];
@@ -88,7 +88,7 @@ namespace dsts::geom
 
                         constexpr uint16_t NoParent = 0x7FFF;
                         if (parent != NoParent) {
-                            bones[bone]->parent = bones[parent].get();
+                            bones[bone]->parent = bones[parent];
                         }
                     } 
                 }
@@ -146,7 +146,7 @@ namespace dsts::geom
         if(!bone) return Matrix();
         Matrix local = computeLocalMatrix(bone->transform);
         if(bone->parent)
-            return computeWorldMatrix(bone->parent).multiply(local);
+            return computeWorldMatrix(bone->parent.get()).multiply(local);
         return local;
     }
 
