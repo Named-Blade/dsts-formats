@@ -4,7 +4,6 @@
 #include "../geom/geom.cpp"
 #include "bindings.hpp"
 
-namespace py = pybind11;
 using namespace dsts::geom;
 using namespace dsts::geom::binary;
 
