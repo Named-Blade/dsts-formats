@@ -1,13 +1,13 @@
 #pragma once
 
 #include <iostream>
-
 #include <cstddef> 
 #include <vector>
 #include <array>
 #include <string>
 #include <memory>
 
+#include "../utils/matrix.cpp"
 #include "binary/skeleton.hpp"
 
 namespace dsts::geom
@@ -97,4 +97,26 @@ namespace dsts::geom
                 }
             }
     };
+
+    Matrix computeLocalMatrix(const binary::BoneTransform& t){
+        Matrix T = Matrix::translation(t.position[0], t.position[1], t.position[2]);
+        Matrix R = Matrix::rotationFromQuaternion(t.quaternion[0], t.quaternion[1], t.quaternion[2], t.quaternion[3]);
+        Matrix S = Matrix::scale(t.scale[0], t.scale[1], t.scale[2]);
+
+        // DirectX row-major: scale -> rotate -> translate
+        return S.multiply(R).multiply(T);
+    }
+
+    Matrix computeWorldMatrix(const Bone* bone){
+        if(!bone) return Matrix();
+        Matrix local = computeLocalMatrix(bone->transform);
+        if(bone->parent)
+            return computeWorldMatrix(bone->parent).multiply(local);
+        return local;
+    }
+
+    Matrix computeInverseBindPose(const Bone* bone){
+        Matrix world = computeWorldMatrix(bone);
+        return world.inverseAffine();
+    }
 }
