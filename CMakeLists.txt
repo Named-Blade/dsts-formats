@@ -9,4 +9,4 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(pybind11 REQUIRED)
 
-pybind11_add_module(myskeleton src/python/bindings.cpp)
+pybind11_add_module(dsts_formats src/python/bindings.cpp)

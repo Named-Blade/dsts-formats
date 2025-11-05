@@ -15,7 +15,7 @@ using namespace dsts::geom::binary;
 // Bind std::shared_ptr<Bone> so it can be used in Python
 PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>);
 
-PYBIND11_MODULE(myskeleton, m) {
+PYBIND11_MODULE(dsts_formats, m) {
     // BoneTransform
     py::class_<BoneTransform>(m, "BoneTransform")
         .def(py::init<>())
@@ -72,4 +72,17 @@ PYBIND11_MODULE(myskeleton, m) {
             std::ifstream f(filename, std::ios::binary);
             s.read(f, skeleton_base, base);
         }, py::arg("data"), py::arg("skeleton_base")=0, py::arg("base")=0);
+
+    py::class_<Geom>(m, "Geom")
+        .def(py::init<>())
+        .def_readwrite("skeleton", &Geom::skeleton)
+        .def("read_from_bytes", [](Geom &s, py::bytes data, int base){
+            std::string buf = data; // copy Python bytes to std::string
+            std::istringstream f(buf, std::ios::binary);
+            s.read(f, base);
+        }, py::arg("data"), py::arg("base")=0)
+        .def("read_from_file", [](Geom &s, py::str filename, int base){
+            std::ifstream f(filename, std::ios::binary);
+            s.read(f, base);
+        }, py::arg("data"), py::arg("base")=0);
 }
