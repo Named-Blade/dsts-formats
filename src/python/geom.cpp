@@ -18,6 +18,10 @@ void bind_geom(py::module_ &m) {
         }, py::arg("data"), py::arg("base")=0)
         .def("read_from_file", [](Geom &s, py::str filename, int base){
             std::ifstream f(filename, std::ios::binary);
+            if (!f.good()) {
+                PyErr_SetString(PyExc_FileNotFoundError, ("File not found: " + std::string(filename)).c_str());
+                throw py::error_already_set();
+            }
             s.read(f, base);
         }, py::arg("data"), py::arg("base")=0);
 }
