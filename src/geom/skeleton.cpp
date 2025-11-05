@@ -24,7 +24,9 @@ namespace dsts::geom
 
     class FloatChannel {
         public:
-
+            uint32_t name_hash;
+            uint32_t array_index;
+            uint8_t flags;
     };
 
     class Skeleton {
@@ -62,7 +64,6 @@ namespace dsts::geom
                     f.read(reinterpret_cast<char*>(name_hashes.data()), sizeof(uint32_t) * header.bone_count);
 
 
-                    bones.reserve(header.bone_count);
                     for (int i = 0; i < header.bone_count; i++) {
                         std::unique_ptr<Bone> bone_ptr = std::make_unique<Bone>();
 
@@ -93,6 +94,40 @@ namespace dsts::geom
                 }
 
                 if (header.float_channel_count > 0) {
+
+                    std::vector<uint32_t> name_hashes(header.float_channel_count);
+                    f.seekg(header.float_channel_name_hashes_offset
+                        + base 
+                        + skeleton_base 
+                        + offsetof(binary::SkeletonHeader, float_channel_name_hashes_offset)
+                    );
+                    f.read(reinterpret_cast<char*>(name_hashes.data()), sizeof(uint32_t) * header.float_channel_count);
+
+                    std::vector<uint32_t> array_indices(header.float_channel_count);
+                    f.seekg(header.float_channel_array_indices_offset
+                        + base 
+                        + skeleton_base 
+                        + offsetof(binary::SkeletonHeader, float_channel_array_indices_offset)
+                    );
+                    f.read(reinterpret_cast<char*>(array_indices.data()), sizeof(uint32_t) * header.float_channel_count);
+
+                    std::vector<uint8_t> flags(header.float_channel_count);
+                    f.seekg(header.float_channel_flags_offset
+                        + base 
+                        + skeleton_base 
+                        + offsetof(binary::SkeletonHeader, float_channel_flags_offset)
+                    );
+                    f.read(reinterpret_cast<char*>(flags.data()), sizeof(uint8_t) * header.float_channel_count);
+
+                    for (int i = 0; i < header.float_channel_count; i++) {
+                        FloatChannel channel;
+
+                        channel.name_hash = name_hashes[i];
+                        channel.array_index = array_indices[i];
+                        channel.flags = flags[i];
+
+                        float_channels.push_back(channel);
+                    }
 
                 }
             }
