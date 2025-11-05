@@ -75,10 +75,11 @@ namespace dsts::geom
                     );
                     f.read(reinterpret_cast<char*>(&parent_bone), sizeof(uint16_t));
 
-                    int bone = boneParentPairs[parent_bone][0];
-                    int parent = boneParentPairs[parent_bone][1];
+                    uint16_t bone = boneParentPairs[parent_bone][0];
+                    uint16_t parent = boneParentPairs[parent_bone][1];
 
-                    if (parent != 0x7FFF) {
+                    constexpr uint16_t NoParent = 0x7FFF;
+                    if (parent != NoParent) {
                         bones[bone]->parent = bones[parent].get();
                     }
                 }
