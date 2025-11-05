@@ -7,4 +7,6 @@ project(dsts_formats LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-add_executable(dsts_formats src/main.cpp)
+find_package(pybind11 REQUIRED)
+
+pybind11_add_module(myskeleton src/python/bindings.cpp)
