@@ -8,25 +8,98 @@ namespace py = pybind11;
 using namespace dsts::geom;
 using namespace dsts::geom::binary;
 
+template <size_t N>
+struct ArrayWrapper {
+    float* data;
+
+    ArrayWrapper(float* d) : data(d) {}
+
+    // Single element access
+    float get(size_t i) const {
+        if (i >= N) throw std::out_of_range("Index out of range");
+        return data[i];
+    }
+
+    void set(size_t i, float v) {
+        if (i >= N) throw std::out_of_range("Index out of range");
+        data[i] = v;
+    }
+
+    // Slice access
+    py::list get(py::slice slice) const {
+        size_t start, stop, step, slicelength;
+        if (!slice.compute(N, &start, &stop, &step, &slicelength))
+            throw py::error_already_set();
+        py::list result;
+        for (size_t i = 0; i < slicelength; ++i)
+            result.append(data[start + i*step]);
+        return result;
+    }
+
+    void set(py::slice slice, py::iterable values) {
+        size_t start, stop, step, slicelength;
+        if (!slice.compute(N, &start, &stop, &step, &slicelength))
+            throw py::error_already_set();
+        size_t i = 0;
+        for (auto v : values) {
+            if (i >= slicelength) break;
+            data[start + i*step] = py::cast<float>(v);
+            i++;
+        }
+        if (i != slicelength)
+            throw std::runtime_error("Slice assignment size mismatch");
+    }
+
+    std::array<float, N> get_all() const {
+        std::array<float, N> arr;
+        for (size_t i = 0; i < N; ++i) arr[i] = data[i];
+        return arr;
+    }
+
+    void set_all(const std::array<float, N>& arr) {
+        for (size_t i = 0; i < N; ++i) data[i] = arr[i];
+    }
+
+    std::string repr() const {
+        std::ostringstream oss;
+        oss << "[";
+        for (size_t i = 0; i < N; ++i) {
+            oss << data[i];
+            if (i != N-1) oss << ", ";
+        }
+        oss << "]";
+        return oss.str();
+    }
+};
+
 void bind_skeleton(py::module_ &m) {
     // BoneTransform
-    py::class_<BoneTransform>(m, "BoneTransform")
-        .def(py::init<>())
-        // quaternion elements
-        .def_property("qx", [](BoneTransform &b){ return b.quaternion[0]; }, [](BoneTransform &b, float v){ b.quaternion[0] = v; })
-        .def_property("qy", [](BoneTransform &b){ return b.quaternion[1]; }, [](BoneTransform &b, float v){ b.quaternion[1] = v; })
-        .def_property("qz", [](BoneTransform &b){ return b.quaternion[2]; }, [](BoneTransform &b, float v){ b.quaternion[2] = v; })
-        .def_property("qw", [](BoneTransform &b){ return b.quaternion[3]; }, [](BoneTransform &b, float v){ b.quaternion[3] = v; })
-        // position elements
-        .def_property("px", [](BoneTransform &b){ return b.position[0]; }, [](BoneTransform &b, float v){ b.position[0] = v; })
-        .def_property("py", [](BoneTransform &b){ return b.position[1]; }, [](BoneTransform &b, float v){ b.position[1] = v; })
-        .def_property("pz", [](BoneTransform &b){ return b.position[2]; }, [](BoneTransform &b, float v){ b.position[2] = v; })
-        .def_property("pw", [](BoneTransform &b){ return b.position[3]; }, [](BoneTransform &b, float v){ b.position[3] = v; })
-        // scale elements
-        .def_property("sx", [](BoneTransform &b){ return b.scale[0]; }, [](BoneTransform &b, float v){ b.scale[0] = v; })
-        .def_property("sy", [](BoneTransform &b){ return b.scale[1]; }, [](BoneTransform &b, float v){ b.scale[1] = v; })
-        .def_property("sz", [](BoneTransform &b){ return b.scale[2]; }, [](BoneTransform &b, float v){ b.scale[2] = v; })
-        .def_property("sw", [](BoneTransform &b){ return b.scale[3]; }, [](BoneTransform &b, float v){ b.scale[3] = v; });
+    py::class_<BoneTransform> bone(m, "BoneTransform");
+    bone.def(py::init<>());
+
+    // Register a single wrapper class for size 4 arrays
+    py::class_<ArrayWrapper<4>>(m, "ArrayWrapper4")
+        .def("__getitem__", py::overload_cast<size_t>(&ArrayWrapper<4>::get, py::const_))
+        .def("__getitem__", py::overload_cast<py::slice>(&ArrayWrapper<4>::get, py::const_))
+        .def("__setitem__", py::overload_cast<size_t, float>(&ArrayWrapper<4>::set))
+        .def("__setitem__", py::overload_cast<py::slice, py::iterable>(&ArrayWrapper<4>::set))
+        .def_property("all", &ArrayWrapper<4>::get_all, &ArrayWrapper<4>::set_all)
+        .def("__repr__", &ArrayWrapper<4>::repr);
+
+    // Helper lambda to bind properties
+    auto bind_array = [&](auto BoneTransform::*member, const char* name) {
+        bone.def_property(
+            name,
+            [member](BoneTransform &b) { return ArrayWrapper<4>(b.*member); },
+            [member](BoneTransform &b, const std::array<float, 4>& arr) {
+                ArrayWrapper<4>(b.*member).set_all(arr);
+            }
+        );
+    };
+
+    bind_array(&BoneTransform::quaternion, "quaternion");
+    bind_array(&BoneTransform::position, "position");
+    bind_array(&BoneTransform::scale, "scale");
 
     // Bone
     py::class_<Bone, std::shared_ptr<Bone>>(m, "Bone")
