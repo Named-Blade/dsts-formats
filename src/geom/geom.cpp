@@ -84,27 +84,7 @@ namespace dsts::geom
 
                 assert(ibpms.size() == skeleton.bones.size());
                 for (int i = 0; i < skeleton.bones.size(); i++) {
-                    using func = std::function<Matrix(std::shared_ptr<Bone>)>;
-
-                    func recoverBindPoseParent;
-
-                    recoverBindPoseParent = [this, &ibpms, &recoverBindPoseParent](std::shared_ptr<Bone> bone) -> Matrix {
-                        if (bone->parent) {
-                            Matrix parent = recoverBindPoseParent(bone->parent);
-                            bone->transform_actual = recoverBindPose(
-                                MatrixFromIbpm(ibpms[getIndex(skeleton.bones, bone)]),
-                                &parent
-                            );
-                        } else {
-                            bone->transform_actual = recoverBindPose(
-                                MatrixFromIbpm(ibpms[getIndex(skeleton.bones, bone)]),
-                                nullptr
-                            );
-                        }
-                        return computeInverseBindPose<&Bone::transform_actual>(bone.get());
-                    };
-
-                    recoverBindPoseParent(skeleton.bones[i]);
+                    skeleton.bones[i]->transform_actual = DecomposeMatrix(MatrixFromIbpm(ibpms[i]).inverse());
                 }
                 
             }

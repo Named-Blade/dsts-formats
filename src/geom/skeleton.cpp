@@ -350,4 +350,79 @@ namespace dsts::geom
         matrix(2,3) = ibpm.matrix[11];
         return matrix;
     }
+
+    void normalize3(float v[3]) {
+        float len = std::sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
+        if(len > 1e-8f) {
+            v[0] /= len;
+            v[1] /= len;
+            v[2] /= len;
+        }
+    }
+
+    binary::BoneTransform DecomposeMatrix(const Matrix& mat) {
+        binary::BoneTransform bt;
+
+        // Extract translation
+        bt.position[0] = mat(0,3);
+        bt.position[1] = mat(1,3);
+        bt.position[2] = mat(2,3);
+        bt.position[3] = 1.0f;
+
+        // Extract scale
+        float scaleX = std::sqrt(mat(0,0)*mat(0,0) + mat(1,0)*mat(1,0) + mat(2,0)*mat(2,0));
+        float scaleY = std::sqrt(mat(0,1)*mat(0,1) + mat(1,1)*mat(1,1) + mat(2,1)*mat(2,1));
+        float scaleZ = std::sqrt(mat(0,2)*mat(0,2) + mat(1,2)*mat(1,2) + mat(2,2)*mat(2,2));
+
+        bt.scale[0] = scaleX;
+        bt.scale[1] = scaleY;
+        bt.scale[2] = scaleZ;
+        bt.scale[3] = 1.0f;
+
+        // Remove scale from rotation matrix
+        float rot[3][3];
+        rot[0][0] = mat(0,0) / scaleX;
+        rot[0][1] = mat(0,1) / scaleY;
+        rot[0][2] = mat(0,2) / scaleZ;
+
+        rot[1][0] = mat(1,0) / scaleX;
+        rot[1][1] = mat(1,1) / scaleY;
+        rot[1][2] = mat(1,2) / scaleZ;
+
+        rot[2][0] = mat(2,0) / scaleX;
+        rot[2][1] = mat(2,1) / scaleY;
+        rot[2][2] = mat(2,2) / scaleZ;
+
+        // Convert rotation matrix to quaternion
+        float trace = rot[0][0] + rot[1][1] + rot[2][2];
+        if(trace > 0) {
+            float s = 0.5f / std::sqrt(trace + 1.0f);
+            bt.quaternion[3] = 0.25f / s;
+            bt.quaternion[0] = (rot[2][1] - rot[1][2]) * s;
+            bt.quaternion[1] = (rot[0][2] - rot[2][0]) * s;
+            bt.quaternion[2] = (rot[1][0] - rot[0][1]) * s;
+        } else {
+            if(rot[0][0] > rot[1][1] && rot[0][0] > rot[2][2]) {
+                float s = 2.0f * std::sqrt(1.0f + rot[0][0] - rot[1][1] - rot[2][2]);
+                bt.quaternion[3] = (rot[2][1] - rot[1][2]) / s;
+                bt.quaternion[0] = 0.25f * s;
+                bt.quaternion[1] = (rot[0][1] + rot[1][0]) / s;
+                bt.quaternion[2] = (rot[0][2] + rot[2][0]) / s;
+            } else if(rot[1][1] > rot[2][2]) {
+                float s = 2.0f * std::sqrt(1.0f + rot[1][1] - rot[0][0] - rot[2][2]);
+                bt.quaternion[3] = (rot[0][2] - rot[2][0]) / s;
+                bt.quaternion[0] = (rot[0][1] + rot[1][0]) / s;
+                bt.quaternion[1] = 0.25f * s;
+                bt.quaternion[2] = (rot[1][2] + rot[2][1]) / s;
+            } else {
+                float s = 2.0f * std::sqrt(1.0f + rot[2][2] - rot[0][0] - rot[1][1]);
+                bt.quaternion[3] = (rot[1][0] - rot[0][1]) / s;
+                bt.quaternion[0] = (rot[0][2] + rot[2][0]) / s;
+                bt.quaternion[1] = (rot[1][2] + rot[2][1]) / s;
+                bt.quaternion[2] = 0.25f * s;
+            }
+        }
+
+        return bt;
+    }
 }
