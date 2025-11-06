@@ -228,10 +228,11 @@ namespace dsts::geom
         return world.inverseAffine();
     }
 
-    bool ibpmEqual(const binary::Ibpm& a, const binary::Ibpm& b, float eps = 1e-5f) {
+    bool ibpmEqual(const binary::Ibpm& a, const binary::Ibpm& b, float eps = 1e-4f) {
         for (int i = 0; i < 12; ++i) {
-            if (std::fabs(a.matrix[i] - b.matrix[i]) > eps)
+            if (std::fabs(a.matrix[i] - b.matrix[i]) > eps) {
                 return false;
+            }
         }
         return true;
     }
@@ -253,5 +254,24 @@ namespace dsts::geom
         ibpm.matrix[10] = matrix(2,2);
         ibpm.matrix[11] = matrix(2,3);
         return ibpm;
+    }
+
+    Matrix MatrixFromIbpm(binary::Ibpm ibpm) {
+        Matrix matrix;
+        matrix(0,0) = ibpm.matrix[0];
+        matrix(0,1) = ibpm.matrix[1];
+        matrix(0,2) = ibpm.matrix[2];
+        matrix(0,3) = ibpm.matrix[3];
+
+        matrix(1,0) = ibpm.matrix[4];
+        matrix(1,1) = ibpm.matrix[5];
+        matrix(1,2) = ibpm.matrix[6];
+        matrix(1,3) = ibpm.matrix[7];
+
+        matrix(2,0) = ibpm.matrix[8];
+        matrix(2,1) = ibpm.matrix[9];
+        matrix(2,2) = ibpm.matrix[10];
+        matrix(2,3) = ibpm.matrix[11];
+        return matrix;
     }
 }

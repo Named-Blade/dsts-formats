@@ -96,3 +96,42 @@ public:
         }
     }
 };
+
+Matrix MirrorMatrix(const Matrix& input, const Matrix& center, bool mirrorX = true, bool mirrorY = false, bool mirrorZ = false) {
+    Matrix result = input;
+
+    // Compute translation relative to center
+    float tx = input(0,3) - center(0,3);
+    float ty = input(1,3) - center(1,3);
+    float tz = input(2,3) - center(2,3);
+
+    // Mirror translation axes
+    if (mirrorX) tx = -tx;
+    if (mirrorY) ty = -ty;
+    if (mirrorZ) tz = -tz;
+
+    // Set mirrored translation back
+    result(0,3) = tx + center(0,3);
+    result(1,3) = ty + center(1,3);
+    result(2,3) = tz + center(2,3);
+
+    // Mirror rotation axes (simple axis inversion)
+    // Only mirror axes that correspond to translation flips
+    if (mirrorX) {
+        result(0,0) =  input(0,0);
+        result(0,1) = -input(0,1);
+        result(0,2) = -input(0,2);
+
+        result(1,0) = -input(1,0);
+        result(1,1) =  input(1,1);
+        result(1,2) =  input(1,2);
+
+        result(2,0) = -input(2,0);
+        result(2,1) =  input(2,1);
+        result(2,2) =  input(2,2);
+    }
+
+    // TODO: Extend for mirrorY / mirrorZ if needed
+
+    return result;
+}

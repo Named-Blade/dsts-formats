@@ -56,12 +56,12 @@ void bind_skeleton(py::module_ &m) {
         })
         .def_readwrite("float_channels", &Skeleton::float_channels)
         // Note: read method requires a Python wrapper to pass bytes
-        .def("read_from_bytes", [](Skeleton &s, py::bytes data, int skeleton_base, int base){
+        .def("from_bytes", [](Skeleton &s, py::bytes data, int skeleton_base, int base){
             std::string buf = data; // copy Python bytes to std::string
             std::istringstream f(buf, std::ios::binary);
             s.read(f, skeleton_base, base);
         }, py::arg("data"), py::arg("skeleton_base")=0, py::arg("base")=0)
-        .def("read_from_file", [](Skeleton &s, py::str filename, int skeleton_base, int base){
+        .def("from_file", [](Skeleton &s, py::str filename, int skeleton_base, int base){
             std::ifstream f(filename, std::ios::binary);
             if (!f.good()) {
                 PyErr_SetString(PyExc_FileNotFoundError, ("File not found: " + std::string(filename)).c_str());
@@ -75,9 +75,9 @@ void bind_skeleton(py::module_ &m) {
             s.write(f);
             return py::bytes(f.str());
         })
-        .def("write_to_file", [](Skeleton &s, py::str filename, int skeleton_base, int base){
+        .def("to_file", [](Skeleton &s, py::str filename){
             std::ofstream f(filename, std::ios::binary);
-            s.write(f, skeleton_base, base);
+            s.write(f);
             f.close();
-        }, py::arg("data"), py::arg("skeleton_base")=0, py::arg("base")=0);
+        }, py::arg("data"));
 }
