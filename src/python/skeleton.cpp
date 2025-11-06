@@ -1,6 +1,7 @@
 #include <string>
 #include <fstream>
 
+#include "../utils/memory_buffer.cpp"
 #include "../geom/skeleton.cpp"
 #include "bindings.hpp"
 
@@ -67,5 +68,16 @@ void bind_skeleton(py::module_ &m) {
                 throw py::error_already_set();
             }
             s.read(f, skeleton_base, base);
+            f.close();
+        }, py::arg("data"), py::arg("skeleton_base")=0, py::arg("base")=0)
+        .def("write_to_bytes", [](Skeleton &s, int skeleton_base, int base) {
+            MemoryStream f;
+            s.write(f, skeleton_base, base);
+            return py::bytes(f.str());
+        }, py::arg("skeleton_base")=0, py::arg("base")=0)
+        .def("write_to_file", [](Skeleton &s, py::str filename, int skeleton_base, int base){
+            std::ofstream f(filename, std::ios::binary);
+            s.write(f, skeleton_base, base);
+            f.close();
         }, py::arg("data"), py::arg("skeleton_base")=0, py::arg("base")=0);
 }

@@ -7,7 +7,10 @@
 #include <string>
 #include <memory>
 
+#include "../utils/vector.cpp"
 #include "../utils/matrix.cpp"
+#include "../utils/stream.cpp"
+#include "../utils/hash.cpp"
 #include "binary/skeleton.hpp"
 
 namespace dsts::geom
@@ -33,6 +36,8 @@ namespace dsts::geom
         public:
             std::vector<std::shared_ptr<Bone>> bones;
             std::vector<FloatChannel> float_channels;
+
+            uint16_t findBoneIndex();
 
             void read(std::istream& f, int skeleton_base = 0, int base = 0){
                 binary::SkeletonHeader header;
@@ -130,6 +135,74 @@ namespace dsts::geom
                     }
 
                 }
+            }
+
+            void write(std::ostream& f, int skeleton_base = 0, int base = 0) {
+                binary::SkeletonHeader header;
+                f.seekp(skeleton_base + base);
+                alignStream(f, 0x10);
+                uint64_t skeleton_start = f.tellp();
+
+                header.bone_count = bones.size();
+                header.bone_parent_pairs_count = bones.size();
+                header.bone_parent_vector_size = 2;
+
+                std::vector<std::array<uint16_t, 2>> bone_parent_pairs(bones.size());
+                std::vector<uint16_t> parent_bones(bones.size());
+                std::vector<binary::BoneTransform> transforms(bones.size());
+                std::vector<uint32_t> bone_name_hashes(bones.size());
+                for (int i = 0; i < bones.size() ;i++) {
+
+                    std::array<uint16_t, 2> vector;
+                    vector[0] = i;
+                    if (bones[i]->parent) {
+                        uint16_t parent_index = getIndex(bones, bones[i]->parent);
+                        vector[1] = parent_index;
+                    } else {
+                        constexpr uint16_t NoParent = 0x7FFF;
+                        vector[1] = NoParent;
+                    }
+                    bone_parent_pairs[i] = vector;
+                    parent_bones[i] = i;
+
+                    transforms[i] = bones[i]->transform;
+                    if (bones[i]->name.length() > 0) {
+                        bone_name_hashes[i] = crc32((const uint8_t *)(bones[i]->name.c_str()),bones[i]->name.length());
+                    } else {
+                        bone_name_hashes[i] = 0;
+                    }
+                }
+
+                f.seekp(skeleton_start+sizeof(binary::SkeletonHeader));
+                f.write(reinterpret_cast<char*>(bone_parent_pairs.data()), sizeof(uint16_t) * 2 * bone_parent_pairs.size());
+
+                alignStream(f, 0x10);
+                header.bone_transform_offset = (uint64_t)(f.tellp()) - (skeleton_start + offsetof(binary::SkeletonHeader, bone_transform_offset));
+                f.write(reinterpret_cast<char*>(transforms.data()), sizeof(binary::BoneTransform) * transforms.size());
+
+                alignStream(f, 0x10);
+                header.parent_bones_offset = (uint64_t)(f.tellp()) - (skeleton_start + offsetof(binary::SkeletonHeader, parent_bones_offset));
+                f.write(reinterpret_cast<char*>(parent_bones.data()), sizeof(uint16_t) * parent_bones.size());
+
+                alignStream(f, 0x10);
+                uint64_t hashes_section_start = f.tellp();
+                header.bone_name_hashes_offset = (uint64_t)(f.tellp()) - (skeleton_start + offsetof(binary::SkeletonHeader, bone_name_hashes_offset));
+                f.write(reinterpret_cast<char*>(bone_name_hashes.data()), sizeof(uint32_t) * bone_name_hashes.size());
+                
+                uint64_t before_pad = f.tellp();
+                alignStream(f, 0x10);
+                if (before_pad < f.tellp()) {
+                    f.seekp((uint64_t)(f.tellp())-0x1);
+                    char zero = '\0';
+                    f.write(&zero,0x1);
+                }
+                uint64_t skeleton_end = f.tellp();
+
+                header.skeleton_file_size = skeleton_end - skeleton_start;
+                header.hashes_section_bytecount = skeleton_end - hashes_section_start;
+
+                f.seekp(skeleton_start);
+                f.write(reinterpret_cast<char*>(&header), sizeof(binary::SkeletonHeader));
             }
     };
 
