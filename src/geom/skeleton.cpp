@@ -207,28 +207,76 @@ namespace dsts::geom
             }
     };
 
-    Matrix computeLocalMatrix(const binary::BoneTransform& t){
-        Matrix T = Matrix::translation(t.position[0], t.position[1], t.position[2]);
-        Matrix R = Matrix::rotationFromQuaternion(t.quaternion[0], t.quaternion[1], t.quaternion[2], t.quaternion[3]);
-        Matrix S = Matrix::scale(t.scale[0], t.scale[1], t.scale[2]);
+    Matrix TransformToMatrix(const binary::BoneTransform& t)
+    {
+        float x = t.quaternion[0];
+        float y = t.quaternion[1];
+        float z = t.quaternion[2];
+        float w = t.quaternion[3];
 
-        // DirectX row-major: scale -> rotate -> translate
-        return S.multiply(R).multiply(T);
+        float xx = x*x, yy = y*y, zz = z*z;
+        float xy = x*y, xz = x*z, yz = y*z;
+        float wx = w*x, wy = w*y, wz = w*z;
+
+        Matrix m;
+
+        m(0,0) = (1 - 2*(yy + zz)) * t.scale[0];
+        m(0,1) = (2*(xy - wz)) * t.scale[0];
+        m(0,2) = (2*(xz + wy)) * t.scale[0];
+        m(0,3) = t.position[0];
+
+        m(1,0) = (2*(xy + wz)) * t.scale[1];
+        m(1,1) = (1 - 2*(xx + zz)) * t.scale[1];
+        m(1,2) = (2*(yz - wx)) * t.scale[1];
+        m(1,3) = t.position[1];
+
+        m(2,0) = (2*(xz - wy)) * t.scale[2];
+        m(2,1) = (2*(yz + wx)) * t.scale[2];
+        m(2,2) = (1 - 2*(xx + yy)) * t.scale[2];
+        m(2,3) = t.position[2];
+
+        m(3,0) = 0;
+        m(3,1) = 0;
+        m(3,2) = 0;
+        m(3,3) = 1;
+
+        return m;
     }
 
-    template <binary::BoneTransform Bone::*T>
-    Matrix computeWorldMatrix(const Bone* bone){
-        if(!bone) return Matrix();
-        Matrix local = computeLocalMatrix(bone->*T);
-        if(bone->parent)
-            return computeWorldMatrix<T>(bone->parent.get()).multiply(local);
-        return local;
+    Matrix GetWorldMatrix(const std::shared_ptr<Bone>& bone)
+    {
+        Matrix local = TransformToMatrix(bone->transform);
+        if (bone->parent)
+            return GetWorldMatrix(bone->parent).multiply(local);
+        else
+            return local;
     }
 
-    template <binary::BoneTransform Bone::*T>
-    Matrix computeInverseBindPose(const Bone* bone){
-        Matrix world = computeWorldMatrix<T>(bone);
-        return world.inverseAffine();
+    Matrix ComputeInverseBindPose(const std::shared_ptr<Bone>& bone)
+    {
+        Matrix world = GetWorldMatrix(bone);
+        return world.inverse();
+    }
+
+
+
+    bool transformEqual(const binary::BoneTransform& a, const binary::BoneTransform& b, float eps = 1e-4f) {
+        for (int i = 0; i < 4; ++i) {
+            if (std::fabs(a.quaternion[i] - b.quaternion[i]) > eps) {
+                return false;
+            }
+        }
+        for (int i = 0; i < 4; ++i) {
+            if (std::fabs(a.position[i] - b.position[i]) > eps) {
+                return false;
+            }
+        }
+        for (int i = 0; i < 4; ++i) {
+            if (std::fabs(a.scale[i] - b.scale[i]) > eps) {
+                return false;
+            }
+        }
+        return true;
     }
 
     bool ibpmEqual(const binary::Ibpm& a, const binary::Ibpm& b, float eps = 1e-4f) {
@@ -238,79 +286,6 @@ namespace dsts::geom
             }
         }
         return true;
-    }
-
-    binary::BoneTransform recoverBindPose(const Matrix& inverseBindPose, const Matrix* parentInverseBindPose)
-    {
-        // Step 1: Get world matrix
-        Matrix world = inverseBindPose.inverseAffine();
-
-        // Step 2: Compute parent world (if any)
-        Matrix parentWorld;
-        if (parentInverseBindPose)
-            parentWorld = parentInverseBindPose->inverseAffine();
-        else
-            parentWorld = Matrix::translation(0, 0, 0); // equivalent to identity
-
-        // Step 3: Compute local matrix
-        Matrix parentWorldInv = parentWorld.inverseAffine();
-        Matrix local = parentWorldInv.multiply(world);
-
-        // Step 4: Extract translation, scale, rotation manually
-        binary::BoneTransform t;
-
-        // Translation is last column
-        t.position[0] = local.m[0][3];
-        t.position[1] = local.m[1][3];
-        t.position[2] = local.m[2][3];
-
-        // Extract scale: length of each basis vector
-        float sx = sqrtf(local.m[0][0]*local.m[0][0] + local.m[1][0]*local.m[1][0] + local.m[2][0]*local.m[2][0]);
-        float sy = sqrtf(local.m[0][1]*local.m[0][1] + local.m[1][1]*local.m[1][1] + local.m[2][1]*local.m[2][1]);
-        float sz = sqrtf(local.m[0][2]*local.m[0][2] + local.m[1][2]*local.m[1][2] + local.m[2][2]*local.m[2][2]);
-        t.scale[0] = sx; t.scale[1] = sy; t.scale[2] = sz;
-
-        // Normalize rotation part
-        Matrix rot;
-        rot.m[0][0] = local.m[0][0] / sx;  rot.m[0][1] = local.m[0][1] / sy;  rot.m[0][2] = local.m[0][2] / sz;
-        rot.m[1][0] = local.m[1][0] / sx;  rot.m[1][1] = local.m[1][1] / sy;  rot.m[1][2] = local.m[1][2] / sz;
-        rot.m[2][0] = local.m[2][0] / sx;  rot.m[2][1] = local.m[2][1] / sy;  rot.m[2][2] = local.m[2][2] / sz;
-
-        // Convert rotation matrix to quaternion
-        float trace = rot.m[0][0] + rot.m[1][1] + rot.m[2][2];
-        float qw, qx, qy, qz;
-        if (trace > 0.0f) {
-            float s = sqrtf(trace + 1.0f) * 2.0f;
-            qw = 0.25f * s;
-            qx = (rot.m[2][1] - rot.m[1][2]) / s;
-            qy = (rot.m[0][2] - rot.m[2][0]) / s;
-            qz = (rot.m[1][0] - rot.m[0][1]) / s;
-        } else if ((rot.m[0][0] > rot.m[1][1]) && (rot.m[0][0] > rot.m[2][2])) {
-            float s = sqrtf(1.0f + rot.m[0][0] - rot.m[1][1] - rot.m[2][2]) * 2.0f;
-            qw = (rot.m[2][1] - rot.m[1][2]) / s;
-            qx = 0.25f * s;
-            qy = (rot.m[0][1] + rot.m[1][0]) / s;
-            qz = (rot.m[0][2] + rot.m[2][0]) / s;
-        } else if (rot.m[1][1] > rot.m[2][2]) {
-            float s = sqrtf(1.0f + rot.m[1][1] - rot.m[0][0] - rot.m[2][2]) * 2.0f;
-            qw = (rot.m[0][2] - rot.m[2][0]) / s;
-            qx = (rot.m[0][1] + rot.m[1][0]) / s;
-            qy = 0.25f * s;
-            qz = (rot.m[1][2] + rot.m[2][1]) / s;
-        } else {
-            float s = sqrtf(1.0f + rot.m[2][2] - rot.m[0][0] - rot.m[1][1]) * 2.0f;
-            qw = (rot.m[1][0] - rot.m[0][1]) / s;
-            qx = (rot.m[0][2] + rot.m[2][0]) / s;
-            qy = (rot.m[1][2] + rot.m[2][1]) / s;
-            qz = 0.25f * s;
-        }
-
-        t.quaternion[0] = qx;
-        t.quaternion[1] = qy;
-        t.quaternion[2] = qz;
-        t.quaternion[3] = qw;
-
-        return t;
     }
 
     binary::Ibpm ibpmFromMatrix(Matrix matrix) {

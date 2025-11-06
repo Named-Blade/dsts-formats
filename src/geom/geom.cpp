@@ -84,6 +84,7 @@ namespace dsts::geom
 
                 assert(ibpms.size() == skeleton.bones.size());
                 for (int i = 0; i < skeleton.bones.size(); i++) {
+                    assert(ibpmEqual(ibpms[i], ibpmFromMatrix(ComputeInverseBindPose(skeleton.bones[i]))));
                     skeleton.bones[i]->transform_actual = DecomposeMatrix(MatrixFromIbpm(ibpms[i]).inverse());
                 }
                 
