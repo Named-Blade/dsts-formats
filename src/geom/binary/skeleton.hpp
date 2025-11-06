@@ -7,9 +7,9 @@ namespace dsts::geom::binary
     #pragma pack(push, 1)
 
     struct BoneTransform {
-        float quaternion[4];
-        float position[4];
-        float scale[4];
+        float quaternion[4] = {0, 0, 0, 1};
+        float position[4]   = {0, 0, 0, 1};
+        float scale[4]      = {1, 1, 1, 1};
     };
 
     struct SkeletonHeader {

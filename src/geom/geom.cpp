@@ -1,5 +1,7 @@
 #pragma once
 
+#include <functional>
+
 #include "binary/clut.hpp"
 #include "binary/enums.hpp"
 #include "binary/geom.hpp"
@@ -65,23 +67,44 @@ namespace dsts::geom
                 std::vector<binary::Ibpm> ibpms(header.ibpm_count);
                 f.read(reinterpret_cast<char*>(ibpms.data()), sizeof(binary::Ibpm) * header.ibpm_count);
 
-                assert(ibpms.size() == skeleton.bones.size());
-                for (int i = 0; i < skeleton.bones.size(); i++) {
-                    binary::Ibpm test = ibpmFromMatrix(computeInverseBindPose(skeleton.bones[i].get()));
-                    assert(ibpmEqual(ibpms[i], test));
-                }
-
                 std::unordered_map<uint32_t, std::string> hash_to_bone_name;
                 for (const auto& name : bone_names) {
                     uint32_t hash = crc32((const uint8_t*)name.c_str(), name.length());
                     hash_to_bone_name[hash] = name;
                 }
 
+                std::unordered_map<std::string, std::shared_ptr<Bone>> name_to_bone;
                 for (auto& bone : skeleton.bones) {
                     auto it = hash_to_bone_name.find(bone->name_hash);
                     if (it != hash_to_bone_name.end()) {
                         bone->name = it->second;
+                        name_to_bone[bone->name] = bone;
                     }
+                }
+
+                assert(ibpms.size() == skeleton.bones.size());
+                for (int i = 0; i < skeleton.bones.size(); i++) {
+                    using func = std::function<Matrix(std::shared_ptr<Bone>)>;
+
+                    func recoverBindPoseParent;
+
+                    recoverBindPoseParent = [this, &ibpms, &recoverBindPoseParent](std::shared_ptr<Bone> bone) -> Matrix {
+                        if (bone->parent) {
+                            Matrix parent = recoverBindPoseParent(bone->parent);
+                            bone->transform_actual = recoverBindPose(
+                                MatrixFromIbpm(ibpms[getIndex(skeleton.bones, bone)]),
+                                &parent
+                            );
+                        } else {
+                            bone->transform_actual = recoverBindPose(
+                                MatrixFromIbpm(ibpms[getIndex(skeleton.bones, bone)]),
+                                nullptr
+                            );
+                        }
+                        return computeInverseBindPose<&Bone::transform_actual>(bone.get());
+                    };
+
+                    recoverBindPoseParent(skeleton.bones[i]);
                 }
                 
             }

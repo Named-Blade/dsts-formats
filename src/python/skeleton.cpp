@@ -34,6 +34,7 @@ void bind_skeleton(py::module_ &m) {
         .def_readwrite("name_hash", &Bone::name_hash)
         .def_readwrite("name", &Bone::name)
         .def_readwrite("transform", &Bone::transform)
+        .def_readwrite("transform_actual", &Bone::transform_actual)
         .def_readwrite("parent", &Bone::parent);
 
     // FloatChannel

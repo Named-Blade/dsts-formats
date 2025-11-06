@@ -6,9 +6,9 @@
 #include <iomanip>
 
 class Matrix {
-private:
-    float m[4][4];
 public:
+    float m[4][4];
+    
     Matrix() { for(int i=0;i<4;i++) for(int j=0;j<4;j++) m[i][j]=(i==j?1.0f:0.0f); }
     float& operator()(int r,int c) { return m[r][c]; }
     float operator()(int r,int c) const { return m[r][c]; }
