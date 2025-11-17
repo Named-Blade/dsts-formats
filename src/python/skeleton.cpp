@@ -2,6 +2,7 @@
 #include <fstream>
 
 #include "../utils/memory_buffer.cpp"
+#include "../utils/hash.cpp"
 #include "../geom/skeleton.cpp"
 #include "bindings.hpp"
 
@@ -33,8 +34,15 @@ void bind_skeleton(py::module_ &m) {
     // Bone
     py::class_<Bone, std::shared_ptr<Bone>>(m, "Bone")
         .def(py::init<>())
-        .def_readwrite("name_hash", &Bone::name_hash)
-        .def_readwrite("name", &Bone::name)
+        .def_property(
+            "name",
+            [](const Bone &b) { return b.name; },
+            [](Bone &b, const std::string &new_name) {
+                b.name = new_name;
+                b.name_hash = crc32((const uint8_t*)b.name.data(), b.name.length());
+            }
+        )
+        .def_readonly("name_hash", &Bone::name_hash) 
         .def_readwrite("transform", &Bone::transform)
         .def_readwrite("transform_actual", &Bone::transform_actual)
         .def_readwrite("parent", &Bone::parent);
