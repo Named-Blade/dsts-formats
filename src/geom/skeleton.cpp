@@ -44,7 +44,24 @@ namespace dsts::geom
             std::vector<std::shared_ptr<Bone>> bones;
             //std::vector<FloatChannel> float_channels;
 
-            uint16_t findBoneIndex();
+            bool allParentsValid() const {
+                for (const auto& bone : bones) {
+                    if (!bone) continue; // ignore null entries
+
+                    if (bone->parent) {
+                        // Check if parent is in the skeleton's bone list
+                        bool found = false;
+                        for (const auto& candidate : bones) {
+                            if (candidate == bone->parent) {
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) return false;
+                    }
+                }
+                return true; // all parents either null or in bones
+            }
 
             void read(std::istream& f, int skeleton_base = 0, int base = 0){
                 binary::SkeletonHeader header;
@@ -146,6 +163,8 @@ namespace dsts::geom
             }
 
             void write(std::ostream& f, int skeleton_base = 0, int base = 0) {
+                assert(allParentsValid());
+
                 binary::SkeletonHeader header;
                 f.seekp(skeleton_base + base);
                 alignStream(f, 0x10);
