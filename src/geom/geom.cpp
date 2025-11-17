@@ -26,16 +26,16 @@ namespace dsts::geom
                 f.read(reinterpret_cast<char*>(&header), sizeof(binary::GeomHeader));
 
                 binary::NameTableHeader nameTableHeader;
-                f.seekg(header.name_table_offset);
+                f.seekg(base + header.name_table_offset);
                 f.read(reinterpret_cast<char*>(&nameTableHeader), sizeof(binary::NameTableHeader));
 
                 std::vector<uint64_t> bone_name_offsets(nameTableHeader.bone_name_count);
-                f.seekg(nameTableHeader.bone_name_offsets_offset);
+                f.seekg(base + nameTableHeader.bone_name_offsets_offset);
                 f.read(reinterpret_cast<char*>(bone_name_offsets.data()), sizeof(uint64_t) * nameTableHeader.bone_name_count);
 
                 std::vector<std::string> bone_names(nameTableHeader.bone_name_count);
                 for (int i = 0; i < nameTableHeader.bone_name_count; i++) {
-                    f.seekg(bone_name_offsets[i] + header.strings_offset);
+                    f.seekg(base + bone_name_offsets[i] + header.strings_offset);
                     std::string result;
                     char ch;
                     while (f.get(ch)) {
@@ -46,12 +46,12 @@ namespace dsts::geom
                 }
 
                 std::vector<uint64_t> material_name_offsets(nameTableHeader.material_name_count);
-                f.seekg(nameTableHeader.material_name_offsets_offset);
+                f.seekg(base + nameTableHeader.material_name_offsets_offset);
                 f.read(reinterpret_cast<char*>(material_name_offsets.data()), sizeof(uint64_t) * nameTableHeader.material_name_count);
 
                 std::vector<std::string> material_names(nameTableHeader.material_name_count);
                 for (int i = 0; i < nameTableHeader.material_name_count; i++) {
-                    f.seekg(material_name_offsets[i] + header.strings_offset);
+                    f.seekg(base + material_name_offsets[i] + header.strings_offset);
                     std::string result;
                     char ch;
                     while (f.get(ch)) {
@@ -63,7 +63,7 @@ namespace dsts::geom
 
                 skeleton.read(f, header.skeleton_offset, base);
 
-                f.seekg(base+header.ibpm_offset);
+                f.seekg(base + header.ibpm_offset);
                 std::vector<binary::Ibpm> ibpms(header.ibpm_count);
                 f.read(reinterpret_cast<char*>(ibpms.data()), sizeof(binary::Ibpm) * header.ibpm_count);
 
