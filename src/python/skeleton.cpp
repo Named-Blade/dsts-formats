@@ -48,11 +48,11 @@ void bind_skeleton(py::module_ &m) {
         .def_readwrite("parent", &Bone::parent);
 
     // FloatChannel
-    py::class_<FloatChannel>(m, "FloatChannel")
-        .def(py::init<>())
-        .def_readwrite("name_hash", &FloatChannel::name_hash)
-        .def_readwrite("array_index", &FloatChannel::array_index)
-        .def_readwrite("flags", &FloatChannel::flags);
+    // py::class_<FloatChannel>(m, "FloatChannel")
+    //     .def(py::init<>())
+    //     .def_readwrite("name_hash", &FloatChannel::name_hash)
+    //     .def_readwrite("array_index", &FloatChannel::array_index)
+    //     .def_readwrite("flags", &FloatChannel::flags);
 
     // Skeleton
     py::bind_vector<std::vector<std::shared_ptr<Bone>>>(m, "BoneList");

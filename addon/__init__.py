@@ -18,8 +18,7 @@ class MY_OT_custom_import_operator(bpy.types.Operator):
     bl_label = "My Custom Import"
 
     def execute(self, context):
-        geom = dsts_formats.Geom()
-        geom.read_from_file("D:/SteamLibrary/steamapps/common/Digimon Story Time Stranger/gamedata/app_0.dx11/chr748.geom")
+        geom = dsts_formats.Geom.from_file("D:/SteamLibrary/steamapps/common/Digimon Story Time Stranger/gamedata/app_0.dx11/chr748.geom")
 
         skeleton.import_skeleton(geom.skeleton, utils.unflop)
         self.report({'INFO'}, "Custom import executed!")

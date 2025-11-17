@@ -26,17 +26,17 @@ namespace dsts::geom
             std::shared_ptr<Bone> parent;
     };
 
-    class FloatChannel {
-        public:
-            uint32_t name_hash;
-            uint32_t array_index;
-            uint8_t flags;
-    };
+    // class FloatChannel {
+    //     public:
+    //         uint32_t name_hash;
+    //         uint32_t array_index;
+    //         uint8_t flags;
+    // };
 
     class Skeleton {
         public:
             std::vector<std::shared_ptr<Bone>> bones;
-            std::vector<FloatChannel> float_channels;
+            //std::vector<FloatChannel> float_channels;
 
             uint16_t findBoneIndex();
 
@@ -207,88 +207,7 @@ namespace dsts::geom
                 f.write(reinterpret_cast<char*>(&header), sizeof(binary::SkeletonHeader));
             }
     };
-
-    Matrix TransformToMatrix(const binary::BoneTransform& t)
-    {
-        float x = t.quaternion[0];
-        float y = t.quaternion[1];
-        float z = t.quaternion[2];
-        float w = t.quaternion[3];
-
-        float xx = x*x, yy = y*y, zz = z*z;
-        float xy = x*y, xz = x*z, yz = y*z;
-        float wx = w*x, wy = w*y, wz = w*z;
-
-        Matrix m;
-
-        m(0,0) = (1 - 2*(yy + zz)) * t.scale[0];
-        m(0,1) = (2*(xy - wz)) * t.scale[0];
-        m(0,2) = (2*(xz + wy)) * t.scale[0];
-        m(0,3) = t.position[0];
-
-        m(1,0) = (2*(xy + wz)) * t.scale[1];
-        m(1,1) = (1 - 2*(xx + zz)) * t.scale[1];
-        m(1,2) = (2*(yz - wx)) * t.scale[1];
-        m(1,3) = t.position[1];
-
-        m(2,0) = (2*(xz - wy)) * t.scale[2];
-        m(2,1) = (2*(yz + wx)) * t.scale[2];
-        m(2,2) = (1 - 2*(xx + yy)) * t.scale[2];
-        m(2,3) = t.position[2];
-
-        m(3,0) = 0;
-        m(3,1) = 0;
-        m(3,2) = 0;
-        m(3,3) = 1;
-
-        return m;
-    }
-
-    Matrix GetWorldMatrix(const std::shared_ptr<Bone>& bone)
-    {
-        Matrix local = TransformToMatrix(bone->transform);
-        if (bone->parent)
-            return GetWorldMatrix(bone->parent).multiply(local);
-        else
-            return local;
-    }
-
-    Matrix ComputeInverseBindPose(const std::shared_ptr<Bone>& bone)
-    {
-        Matrix world = GetWorldMatrix(bone);
-        return world.inverse();
-    }
-
-
-
-    bool transformEqual(const binary::BoneTransform& a, const binary::BoneTransform& b, float eps = 1e-4f) {
-        for (int i = 0; i < 4; ++i) {
-            if (std::fabs(a.quaternion[i] - b.quaternion[i]) > eps) {
-                return false;
-            }
-        }
-        for (int i = 0; i < 4; ++i) {
-            if (std::fabs(a.position[i] - b.position[i]) > eps) {
-                return false;
-            }
-        }
-        for (int i = 0; i < 4; ++i) {
-            if (std::fabs(a.scale[i] - b.scale[i]) > eps) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    bool ibpmEqual(const binary::Ibpm& a, const binary::Ibpm& b, float eps = 1e-4f) {
-        for (int i = 0; i < 12; ++i) {
-            if (std::fabs(a.matrix[i] - b.matrix[i]) > eps) {
-                return false;
-            }
-        }
-        return true;
-    }
-
+    
     binary::Ibpm ibpmFromMatrix(Matrix matrix) {
         binary::Ibpm ibpm;
         ibpm.matrix[0] = matrix(0,0);
@@ -325,15 +244,6 @@ namespace dsts::geom
         matrix(2,2) = ibpm.matrix[10];
         matrix(2,3) = ibpm.matrix[11];
         return matrix;
-    }
-
-    void normalize3(float v[3]) {
-        float len = std::sqrt(v[0]*v[0] + v[1]*v[1] + v[2]*v[2]);
-        if(len > 1e-8f) {
-            v[0] /= len;
-            v[1] /= len;
-            v[2] /= len;
-        }
     }
 
     binary::BoneTransform DecomposeMatrix(const Matrix& mat) {
@@ -400,5 +310,81 @@ namespace dsts::geom
         }
 
         return bt;
+    }
+
+    Matrix TransformToMatrix(const binary::BoneTransform& t){
+        float x = t.quaternion[0];
+        float y = t.quaternion[1];
+        float z = t.quaternion[2];
+        float w = t.quaternion[3];
+
+        float xx = x*x, yy = y*y, zz = z*z;
+        float xy = x*y, xz = x*z, yz = y*z;
+        float wx = w*x, wy = w*y, wz = w*z;
+
+        Matrix m;
+
+        m(0,0) = (1 - 2*(yy + zz)) * t.scale[0];
+        m(0,1) = (2*(xy - wz)) * t.scale[0];
+        m(0,2) = (2*(xz + wy)) * t.scale[0];
+        m(0,3) = t.position[0];
+
+        m(1,0) = (2*(xy + wz)) * t.scale[1];
+        m(1,1) = (1 - 2*(xx + zz)) * t.scale[1];
+        m(1,2) = (2*(yz - wx)) * t.scale[1];
+        m(1,3) = t.position[1];
+
+        m(2,0) = (2*(xz - wy)) * t.scale[2];
+        m(2,1) = (2*(yz + wx)) * t.scale[2];
+        m(2,2) = (1 - 2*(xx + yy)) * t.scale[2];
+        m(2,3) = t.position[2];
+
+        m(3,0) = 0;
+        m(3,1) = 0;
+        m(3,2) = 0;
+        m(3,3) = 1;
+
+        return m;
+    }
+
+    Matrix GetWorldMatrix(const std::shared_ptr<Bone>& bone){
+        Matrix local = TransformToMatrix(bone->transform);
+        if (bone->parent)
+            return GetWorldMatrix(bone->parent).multiply(local);
+        else
+            return local;
+    }
+
+    Matrix ComputeInverseBindPose(const std::shared_ptr<Bone>& bone){
+        Matrix world = GetWorldMatrix(bone);
+        return world.inverse();
+    }
+
+    bool transformEqual(const binary::BoneTransform& a, const binary::BoneTransform& b, float eps = 1e-4f) {
+        for (int i = 0; i < 4; ++i) {
+            if (std::fabs(a.quaternion[i] - b.quaternion[i]) > eps) {
+                return false;
+            }
+        }
+        for (int i = 0; i < 4; ++i) {
+            if (std::fabs(a.position[i] - b.position[i]) > eps) {
+                return false;
+            }
+        }
+        for (int i = 0; i < 4; ++i) {
+            if (std::fabs(a.scale[i] - b.scale[i]) > eps) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool ibpmEqual(const binary::Ibpm& a, const binary::Ibpm& b, float eps = 1e-4f) {
+        for (int i = 0; i < 12; ++i) {
+            if (std::fabs(a.matrix[i] - b.matrix[i]) > eps) {
+                return false;
+            }
+        }
+        return true;
     }
 }
