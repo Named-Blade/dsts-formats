@@ -25,6 +25,11 @@ namespace dsts::geom
             binary::BoneTransform transform_actual;
             
             std::shared_ptr<Bone> parent;
+
+            void setName(std::string newName){
+                name = newName;
+                name_hash = crc32((const uint8_t*)name.data(),name.length());
+            }
     };
 
     // class FloatChannel {
