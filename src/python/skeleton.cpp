@@ -59,21 +59,16 @@ void bind_skeleton(py::module_ &m) {
     py::class_<Skeleton>(m, "Skeleton")
         .def(py::init<>())
         .def_readwrite("bones", &Skeleton::bones)
-        .def("add_bone", [](Skeleton &s, std::shared_ptr<Bone> b){
-            s.bones.push_back(b);
-        })
-        .def("delete_bone", [](Skeleton &s, size_t index){
-            if (index >= s.bones.size()) throw std::out_of_range("Bone index out of range");
-            s.bones.erase(s.bones.begin() + index);
-        })
-        .def_readwrite("float_channels", &Skeleton::float_channels)
-        // Note: read method requires a Python wrapper to pass bytes
-        .def("from_bytes", [](Skeleton &s, py::bytes data, int skeleton_base, int base){
-            std::string buf = data; // copy Python bytes to std::string
+        //.def_readwrite("float_channels", &Skeleton::float_channels)
+        .def_static("from_bytes", [](py::bytes data, int skeleton_base, int base){
+            Skeleton s;
+            std::string buf = data;
             std::istringstream f(buf, std::ios::binary);
             s.read(f, skeleton_base, base);
+            return s;
         }, py::arg("data"), py::arg("skeleton_base")=0, py::arg("base")=0)
-        .def("from_file", [](Skeleton &s, py::str filename, int skeleton_base, int base){
+        .def_static("from_file", [](py::str filename, int skeleton_base, int base){
+            Skeleton s;
             std::ifstream f(filename, std::ios::binary);
             if (!f.good()) {
                 PyErr_SetString(PyExc_FileNotFoundError, ("File not found: " + std::string(filename)).c_str());
@@ -81,6 +76,7 @@ void bind_skeleton(py::module_ &m) {
             }
             s.read(f, skeleton_base, base);
             f.close();
+            return s;
         }, py::arg("data"), py::arg("skeleton_base")=0, py::arg("base")=0)
         .def("to_bytes", [](Skeleton &s) {
             MemoryStream f;
