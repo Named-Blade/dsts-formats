@@ -11,6 +11,7 @@
 #include "../utils/matrix.cpp"
 #include "../utils/stream.cpp"
 #include "../utils/hash.cpp"
+#include "../utils/quaternion.cpp"
 #include "binary/skeleton.hpp"
 
 namespace dsts::geom
@@ -358,6 +359,59 @@ namespace dsts::geom
     Matrix ComputeInverseBindPose(const std::shared_ptr<Bone>& bone){
         Matrix world = GetWorldMatrix(bone);
         return world.inverse();
+    }
+
+    // Absolute transform: parent + relative
+    binary::BoneTransform getAbsoluteTransform(const binary::BoneTransform &rel, const binary::BoneTransform *parent) {
+        binary::BoneTransform out = rel;
+        if (!parent) return out;
+
+        // Quaternion
+        quat_mul(parent->quaternion, rel.quaternion, out.quaternion);
+
+        // Scale (component-wise)
+        for (int i = 0; i < 3; ++i)
+            out.scale[i] = parent->scale[i] * rel.scale[i];
+        out.scale[3] = 1.0f;
+
+        // Position: parent_position + rotated & scaled child position
+        float scaled[3] = { rel.position[0]*parent->scale[0], rel.position[1]*parent->scale[1], rel.position[2]*parent->scale[2] };
+        quat_rotate(parent->quaternion, scaled, out.position);
+        out.position[0] += parent->position[0];
+        out.position[1] += parent->position[1];
+        out.position[2] += parent->position[2];
+        out.position[3] = 1.0f;
+
+        return out;
+    }
+
+    // Relative transform: absolute - parent
+    binary::BoneTransform getRelativeTransform(const binary::BoneTransform &abs, const binary::BoneTransform *parent) {
+        binary::BoneTransform out = abs;
+        if (!parent) return out;
+
+        // Quaternion
+        float inv[4];
+        quat_inverse(parent->quaternion, inv);
+        quat_mul(inv, abs.quaternion, out.quaternion);
+
+        // Scale (component-wise)
+        for (int i = 0; i < 3; ++i)
+            out.scale[i] = abs.scale[i] / parent->scale[i];
+        out.scale[3] = 1.0f;
+
+        // Position: inverse rotate & scale
+        float pos[3] = { abs.position[0] - parent->position[0],
+                        abs.position[1] - parent->position[1],
+                        abs.position[2] - parent->position[2] };
+        quat_rotate(inv, pos, pos);
+        for (int i = 0; i < 3; ++i) pos[i] /= parent->scale[i];
+        out.position[0] = pos[0];
+        out.position[1] = pos[1];
+        out.position[2] = pos[2];
+        out.position[3] = 1.0f;
+
+        return out;
     }
 
     bool transformEqual(const binary::BoneTransform& a, const binary::BoneTransform& b, float eps = 1e-4f) {
