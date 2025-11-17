@@ -8,6 +8,8 @@
 using namespace dsts::geom;
 using namespace dsts::geom::binary;
 
+PYBIND11_MAKE_OPAQUE(std::vector<std::shared_ptr<Bone>>)
+
 void bind_skeleton(py::module_ &m) {
     // BoneTransform
     py::class_<BoneTransform> boneTransform(m, "BoneTransform");
@@ -45,6 +47,7 @@ void bind_skeleton(py::module_ &m) {
         .def_readwrite("flags", &FloatChannel::flags);
 
     // Skeleton
+    py::bind_vector<std::vector<std::shared_ptr<Bone>>>(m, "BoneList");
     py::class_<Skeleton>(m, "Skeleton")
         .def(py::init<>())
         .def_readwrite("bones", &Skeleton::bones)

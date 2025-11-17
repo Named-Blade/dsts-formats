@@ -1,7 +1,6 @@
 from . import skeleton
+from . import utils
 from . import dsts_formats
-import mathutils
-import math
 
 import bpy
 
@@ -22,11 +21,7 @@ class MY_OT_custom_import_operator(bpy.types.Operator):
         geom = dsts_formats.Geom()
         geom.read_from_file("D:/SteamLibrary/steamapps/common/Digimon Story Time Stranger/gamedata/app_0.dx11/chr748.geom")
 
-        def unflop(matrix):
-            rot = mathutils.Matrix.Rotation(math.radians(90), 4, 'X')
-            return rot @ matrix
-
-        skeleton.import_skeleton(geom.skeleton, unflop)
+        skeleton.import_skeleton(geom.skeleton, utils.unflop)
         self.report({'INFO'}, "Custom import executed!")
         return {'FINISHED'}
 
