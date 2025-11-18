@@ -39,6 +39,17 @@ void bind_skeleton(py::module_ &m) {
     bind_array(&BoneTransform::position, "position");
     bind_array(&BoneTransform::scale, "scale");
 
+    boneTransform.def("__repr__", [](const BoneTransform &bt) {
+        auto array_repr = [&](const float* ptr) {
+            py::array_t<float> arr({4}, {sizeof(float)}, const_cast<float*>(ptr));
+            return py::repr(arr).cast<std::string>();
+        };
+
+        return "<BoneTransform quaternion=" + array_repr(bt.quaternion) +
+            ", position=" + array_repr(bt.position) +
+            ", scale=" + array_repr(bt.scale) + ">";
+    });
+
     // Bone
     py::class_<Bone, std::shared_ptr<Bone>>(m, "Bone")
         .def(py::init<>())
