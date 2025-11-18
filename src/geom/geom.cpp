@@ -17,10 +17,18 @@ namespace dsts::geom
 {  
     class Geom {
         public:
+            uint32_t unknown_0x10 = 0;
+            uint32_t unknown_0x30 = 0;
+            uint32_t unknown_0x34 = 0;
+
             Skeleton skeleton;
 
             void read(std::istream& f, int base = 0){
                 binary::GeomHeader header;
+                
+                unknown_0x10 = header.unknown_0x10;
+                unknown_0x30 = header.unknown_0x30;
+                unknown_0x34 = header.unknown_0x34;
 
                 f.seekg(base);
                 f.read(reinterpret_cast<char*>(&header), sizeof(binary::GeomHeader));
