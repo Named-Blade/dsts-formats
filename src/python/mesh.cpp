@@ -15,5 +15,6 @@ void bind_mesh(py::module_ &m) {
             [](const Mesh &m) { return m.name; },
             &Mesh::setName
         )
-        .def_readonly("name_hash", &Mesh::name_hash) ;
+        .def_readonly("name_hash", &Mesh::name_hash)
+        .def("__repr__",[](const Mesh &m){ return "<Mesh :"+ m.name +">";});
 }
