@@ -1,6 +1,7 @@
 #pragma once
 
 #include <functional>
+#include <variant>
 
 #include "binary/clut.hpp"
 #include "binary/enums.hpp"
@@ -134,6 +135,12 @@ namespace dsts::geom
                     std::vector<binary::MeshAttribute> meshAttributes(meshHeaders[i].attribute_count);
                     f.seekg(base + meshHeaders[i].attributes_offset);
                     f.read(reinterpret_cast<char*>(meshAttributes.data()), sizeof(binary::MeshAttribute) * meshHeaders[i].attribute_count);
+
+                    for (int y = 0; y < meshHeaders[i].vertex_count; y++) {
+                        f.seekg(base + meshHeaders[i].vertices_offset + meshHeaders[i].bytes_per_vertex * y);
+                        Vertex vertex(f, f.tellg(), meshAttributes);
+                        mesh.vertices.push_back(vertex);
+                    }
 
                     meshes.push_back(mesh);
                 }

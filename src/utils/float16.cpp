@@ -121,3 +121,5 @@ struct float16_le {
         bits_native = h;
     }
 };
+
+using float16 = float16_le;
