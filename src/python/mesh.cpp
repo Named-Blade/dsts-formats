@@ -94,6 +94,28 @@ static py::object to_numpy(const VertexAttribute& a) {
     return std::visit(AttributeToNumpy{}, a.data);
 }
 
+template <typename VertexType, typename MemberType>
+void def_vertex_property(py::class_<VertexType>& cls, const char* name, MemberType VertexType::*member) {
+    cls.def_property(
+        name,
+        [member](const VertexType& v) {
+            return to_numpy(v.*member);  // convert member to numpy array
+        },
+        [member](VertexType& v, py::object a) {
+            // Special case: VertexAttribute
+            if constexpr (std::is_same_v<MemberType, VertexAttribute>) {
+                if (py::isinstance<VertexAttribute>(a)) {
+                    v.*member = a.cast<VertexAttribute>();
+                } else {
+                    throw std::runtime_error("Expected VertexAttribute");
+                }
+            } else {
+                assign_numpy(v.*member, a);  // assign from numpy array
+            }
+        }
+    );
+}
+
 void bind_mesh(py::module_ &m) {
     py::class_<float16>(m, "float16")
         .def(py::init<>())
@@ -101,60 +123,24 @@ void bind_mesh(py::module_ &m) {
         .def("__float__", [](const float16 &h){ return static_cast<float>(h); });
 
     py::class_<VertexAttribute>(m, "VertexAttribute")
+        .def(py::init<>())
+        .def(py::init<std::string, size_t>())
         .def("as_numpy", [](const VertexAttribute& a) { return to_numpy(a); })
         .def("assign",   [](VertexAttribute& a, py::object v) { assign_numpy(a, v); });
 
-    py::class_<Vertex>(m, "Vertex")
-        .def_property(
-            "position",
-            [](const Vertex& v) { return to_numpy(v.position); },
-            [](Vertex& v, py::object a) { assign_numpy(v.position, a); }
-        )
-        .def_property(
-            "normal",
-            [](const Vertex& v) { return to_numpy(v.normal); },
-            [](Vertex& v, py::object a) { assign_numpy(v.normal, a); }
-        )
-        .def_property(
-            "tangent",
-            [](const Vertex& v) { return to_numpy(v.tangent); },
-            [](Vertex& v, py::object a) { assign_numpy(v.tangent, a); }
-        )
-        .def_property(
-            "binormal",
-            [](const Vertex& v) { return to_numpy(v.binormal); },
-            [](Vertex& v, py::object a) { assign_numpy(v.binormal, a); }
-        )
-        .def_property(
-            "uv1",
-            [](const Vertex& v) { return to_numpy(v.uv1); },
-            [](Vertex& v, py::object a) { assign_numpy(v.uv1, a); }
-        )
-        .def_property(
-            "uv2",
-            [](const Vertex& v) { return to_numpy(v.uv2); },
-            [](Vertex& v, py::object a) { assign_numpy(v.uv2, a); }
-        )
-        .def_property(
-            "uv3",
-            [](const Vertex& v) { return to_numpy(v.uv3); },
-            [](Vertex& v, py::object a) { assign_numpy(v.uv3, a); }
-        )
-        .def_property(
-            "color",
-            [](const Vertex& v) { return to_numpy(v.color); },
-            [](Vertex& v, py::object a) { assign_numpy(v.color, a); }
-        )
-        .def_property(
-            "index",
-            [](const Vertex& v) { return to_numpy(v.index); },
-            [](Vertex& v, py::object a) { assign_numpy(v.index, a); }
-        )
-        .def_property(
-            "weight",
-            [](const Vertex& v) { return to_numpy(v.weight); },
-            [](Vertex& v, py::object a) { assign_numpy(v.weight, a); }
-        );
+    py::class_<Vertex> pyVertex(m, "Vertex");
+    pyVertex.def(py::init<>());
+
+    def_vertex_property(pyVertex, "position", &Vertex::position);
+    def_vertex_property(pyVertex, "normal", &Vertex::normal);
+    def_vertex_property(pyVertex, "tangent", &Vertex::tangent);
+    def_vertex_property(pyVertex, "binormal", &Vertex::binormal);
+    def_vertex_property(pyVertex, "uv1", &Vertex::uv1);
+    def_vertex_property(pyVertex, "uv2", &Vertex::uv2);
+    def_vertex_property(pyVertex, "uv3", &Vertex::uv3);
+    def_vertex_property(pyVertex, "color", &Vertex::color);
+    def_vertex_property(pyVertex, "index", &Vertex::index);
+    def_vertex_property(pyVertex, "weight", &Vertex::weight);
 
     py::bind_vector<std::vector<Vertex>>(m, "VertexList");
 

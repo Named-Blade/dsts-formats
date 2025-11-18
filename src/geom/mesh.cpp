@@ -31,6 +31,33 @@ namespace dsts::geom
 
             VertexAttribute() = default;
 
+            VertexAttribute(std::string name, size_t count = 1) {
+                if (name == "float16") {
+                    data = std::vector<float16>(count);
+                }
+                if (name == "float" || name == "float32") {
+                    data = std::vector<float>(count);
+                }
+                if (name == "int8") {
+                    data = std::vector<int8_t>(count);
+                }
+                if (name == "uint8") {
+                    data = std::vector<uint8_t>(count);
+                }
+                if (name == "int16") {
+                    data = std::vector<int16_t>(count);
+                }
+                if (name == "uint16") {
+                    data = std::vector<uint16_t>(count);
+                }
+                if (name == "int32") {
+                    data = std::vector<int32_t>(count);
+                }
+                if (name == "uint32") {
+                    data = std::vector<uint32_t>(count);
+                }
+            }
+
             VertexAttribute(const binary::MeshAttribute& desc,
                             std::istream& stream,
                             std::streampos baseOffset)
@@ -91,6 +118,8 @@ namespace dsts::geom
             VertexAttribute color;
             VertexAttribute index;
             VertexAttribute weight;
+
+            Vertex() = default;
 
             Vertex(std::istream& stream,
                 std::streampos baseOffset,
