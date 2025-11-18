@@ -7,6 +7,8 @@
 using namespace dsts::geom;
 using namespace dsts::geom::binary;
 
+PYBIND11_MAKE_OPAQUE(std::vector<Vertex>)
+
 // ---------- Convert C++ vector → NumPy array ----------
 struct AttributeToNumpy {
     py::object operator()(const std::monostate&) const {
@@ -25,7 +27,7 @@ struct AttributeToNumpy {
 
     py::object operator()(const std::vector<float16>& vec) const {
         return py::array(
-            py::dtype("float16"),
+            py::dtype("e"),
             vec.size(),
             reinterpret_cast<const uint16_t*>(vec.data()),
             py::cast(vec)
@@ -93,12 +95,16 @@ static py::object to_numpy(const VertexAttribute& a) {
 }
 
 void bind_mesh(py::module_ &m) {
+    py::class_<float16>(m, "float16")
+        .def(py::init<>())
+        .def(py::init<float>())
+        .def("__float__", [](const float16 &h){ return static_cast<float>(h); });
+
     py::class_<VertexAttribute>(m, "VertexAttribute")
         .def("as_numpy", [](const VertexAttribute& a) { return to_numpy(a); })
         .def("assign",   [](VertexAttribute& a, py::object v) { assign_numpy(a, v); });
 
     py::class_<Vertex>(m, "Vertex")
-        // Writable Python properties returning numpy arrays
         .def_property(
             "position",
             [](const Vertex& v) { return to_numpy(v.position); },
@@ -149,6 +155,8 @@ void bind_mesh(py::module_ &m) {
             [](const Vertex& v) { return to_numpy(v.weight); },
             [](Vertex& v, py::object a) { assign_numpy(v.weight, a); }
         );
+
+    py::bind_vector<std::vector<Vertex>>(m, "VertexList");
 
     py::class_<Mesh>(m, "Mesh")
         .def(py::init<>())
