@@ -40,5 +40,39 @@ namespace dsts::geom::binary
         char padding[0x8];
     };
 
+    enum Atype : uint16_t {
+        Position = 0x1,
+        Normal,
+        Tangent,
+        Binormal,
+        UV1,
+        UV2,
+        UV3,
+        unk_8,
+        Color,
+        Index,
+        Weight
+    };
+
+    enum Dtype : uint16_t {
+        uByte,
+        sByte,
+        Float16,
+        uShort,
+        Float,
+        sShort,
+        uInt,
+        sInt,
+        Float16_alias,
+        Float_alias,
+    };
+
+    struct MeshAttribute {
+        Atype atype;
+        uint16_t count;
+        Dtype dtype;
+        uint16_t offset;
+    };
+
     #pragma pack(pop)
 }

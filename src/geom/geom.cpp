@@ -112,6 +112,10 @@ namespace dsts::geom
                 for(int i = 0; i < header.mesh_count; i++) {
                     Mesh mesh;
 
+                    mesh.unknown_0x18 = meshHeaders[i].unknown_0x18;
+                    mesh.unknown_0x4C = meshHeaders[i].unknown_0x4C;
+                    mesh.unknown_0x50 = meshHeaders[i].unknown_0x50;
+
                     mesh.name_hash = meshHeaders[i].name_hash;
                     if (mesh.name_hash != 0 && meshHeaders[i].name_offset != 0) {
                         f.seekg(base + header.strings_offset + meshHeaders[i].name_offset);
@@ -126,6 +130,10 @@ namespace dsts::geom
 
                         assert(mesh.name_hash == crc32((const uint8_t*)mesh.name.data(),mesh.name.size()));
                     }
+
+                    std::vector<binary::MeshAttribute> meshAttributes(meshHeaders[i].attribute_count);
+                    f.seekg(base + meshHeaders[i].attributes_offset);
+                    f.read(reinterpret_cast<char*>(meshAttributes.data()), sizeof(binary::MeshAttribute) * meshHeaders[i].attribute_count);
 
                     meshes.push_back(mesh);
                 }

@@ -11,9 +11,13 @@
 #include "binary/mesh.hpp"
 
 namespace dsts::geom
-{  
+{
     class Mesh{
         public:
+            uint64_t unknown_0x18;
+            uint32_t unknown_0x4C;
+            uint32_t unknown_0x50;
+
             uint32_t name_hash;
             std::string name;
 
