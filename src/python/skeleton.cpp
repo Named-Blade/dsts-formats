@@ -61,7 +61,8 @@ void bind_skeleton(py::module_ &m) {
         .def_readonly("name_hash", &Bone::name_hash) 
         .def_readwrite("transform", &Bone::transform)
         .def_readwrite("transform_actual", &Bone::transform_actual)
-        .def_readwrite("parent", &Bone::parent);
+        .def_readwrite("parent", &Bone::parent)
+        .def("__repr__", [](const Bone &b){ return "<Bone :" + b.name + ">";});
 
     // FloatChannel
     // py::class_<FloatChannel>(m, "FloatChannel")
@@ -71,7 +72,35 @@ void bind_skeleton(py::module_ &m) {
     //     .def_readwrite("flags", &FloatChannel::flags);
 
     // Skeleton
-    py::bind_vector<std::vector<std::shared_ptr<Bone>>>(m, "BoneList");
+    py::bind_vector<std::vector<std::shared_ptr<Bone>>>(m, "BoneList")
+        .def("__repr", [](const std::vector<std::shared_ptr<Bone>> &v){
+            std::string out = "BoneList[";
+            for (int i = 0; i < v.size(); i++) {
+                out += "<Bone :" + v[i]->name + ">";
+                if (i != v.size()-1) {
+                    out += ", ";
+                }
+            }
+            out += "]";
+            return out;
+        });
+        //__repr__ doesn't overwrite for some reason in a bound vector, therefore you can have this nonsense instead.
+        py::dict locals;
+        py::exec(R"(
+            module_name = "dsts_formats"
+            module_already_loaded = module_name in __import__("sys").modules
+
+            if module_already_loaded:
+                mod = __import__(module_name)
+            else:
+                mod = __import__(module_name)
+
+            mod.BoneList.__repr__ = mod.BoneList.__repr
+
+            if not module_already_loaded:
+                del __import__("sys").modules[module_name]
+        )", py::globals(), locals);
+
     py::class_<Skeleton>(m, "Skeleton")
         .def(py::init<>())
         .def_readwrite("bones", &Skeleton::bones)
