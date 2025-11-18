@@ -19,9 +19,18 @@ void bind_skeleton(py::module_ &m) {
     auto bind_array = [&](auto BoneTransform::*member, const char* name) {
         boneTransform.def_property(
             name,
-            [member](BoneTransform &b) { return ArrayWrapper<4>(b.*member); },
-            [member](BoneTransform &b, const std::array<float, 4>& arr) {
-                ArrayWrapper<4>(b.*member).set_all(arr);
+            [member,name](BoneTransform &bt) {
+                return py::array_t<float>(
+                    {4},                          // shape
+                    {sizeof(float)},              // stride
+                    bt.*member,                   // pointer to data (no copy)
+                    py::cast(&bt)                 // base object (keeps alive)
+                );
+            },
+            [member,name](BoneTransform &bt, py::array_t<float> arr) {
+                if (arr.size() != 4)
+                    throw std::runtime_error(std::string(name) + " must have size 4");
+                std::memcpy(bt.*member, arr.data(), 4*sizeof(float));
             }
         );
     };
