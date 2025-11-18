@@ -7,10 +7,15 @@
 using namespace dsts::geom;
 using namespace dsts::geom::binary;
 
+PYBIND11_MAKE_OPAQUE(std::vector<Mesh>)
+
 void bind_geom(py::module_ &m) {
+    py::bind_vector<std::vector<Mesh>>(m, "MeshList");
+
     py::class_<Geom>(m, "Geom")
         .def(py::init<>())
         .def_readwrite("skeleton", &Geom::skeleton)
+        .def_readwrite("meshes", &Geom::meshes)
         .def_static("from_bytes", [](py::bytes data, int base){
             Geom geom;
             std::string buf = data;

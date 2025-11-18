@@ -11,6 +11,7 @@
 #include "binary/skeleton.hpp"
 
 #include "skeleton.cpp"
+#include "mesh.cpp"
 #include "../utils/hash.cpp"
 
 namespace dsts::geom
@@ -22,16 +23,17 @@ namespace dsts::geom
             uint32_t unknown_0x34 = 0;
 
             Skeleton skeleton;
+            std::vector<Mesh> meshes;
 
             void read(std::istream& f, int base = 0){
                 binary::GeomHeader header;
-                
-                unknown_0x10 = header.unknown_0x10;
-                unknown_0x30 = header.unknown_0x30;
-                unknown_0x34 = header.unknown_0x34;
 
                 f.seekg(base);
                 f.read(reinterpret_cast<char*>(&header), sizeof(binary::GeomHeader));
+
+                unknown_0x10 = header.unknown_0x10;
+                unknown_0x30 = header.unknown_0x30;
+                unknown_0x34 = header.unknown_0x34;
 
                 binary::NameTableHeader nameTableHeader;
                 f.seekg(base + header.name_table_offset);
@@ -102,7 +104,31 @@ namespace dsts::geom
                     assert(transformEqual(b.transform_actual,getAbsoluteTransform(b.transform, b.parent ? &b.parent->transform_actual : nullptr)));
                     assert(transformEqual(b.transform,getRelativeTransform(b.transform_actual, b.parent ? &b.parent->transform_actual : nullptr)));
                 }
+
+                std::vector<binary::MeshHeader> meshHeaders(header.mesh_count);
+                f.seekg(base + header.mesh_offset);
+                f.read(reinterpret_cast<char*>(meshHeaders.data()), sizeof(binary::MeshHeader) * header.mesh_count);
                 
+                for(int i = 0; i < header.mesh_count; i++) {
+                    Mesh mesh;
+
+                    mesh.name_hash = meshHeaders[i].name_hash;
+                    if (mesh.name_hash != 0 && meshHeaders[i].name_offset != 0) {
+                        f.seekg(base + header.strings_offset + meshHeaders[i].name_offset);
+
+                        std::string result;
+                        char ch;
+                        while (f.get(ch)) {
+                            if (ch == '\0') break;
+                            result += ch;
+                        }
+                        mesh.name = result;
+
+                        assert(mesh.name_hash == crc32((const uint8_t*)mesh.name.data(),mesh.name.size()));
+                    }
+
+                    meshes.push_back(mesh);
+                }
             }
     };
 }
