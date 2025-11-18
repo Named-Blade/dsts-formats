@@ -144,6 +144,10 @@ namespace dsts::geom
             }
     };
 
+    struct Triangle {
+        Vertex v0, v1, v2;
+    };
+
     
     class Mesh{
         public:
@@ -155,6 +159,74 @@ namespace dsts::geom
             std::string name;
 
             std::vector<Vertex> vertices;
+            std::vector<uint16_t> indices;
+            PrimitiveType primitive;
+
+            std::vector<Triangle> toTriangleListFromTriangles() {
+                std::vector<Triangle> tris;
+                tris.reserve(indices.size() / 3);
+
+                for (size_t i = 0; i + 2 < indices.size(); i += 3)
+                {
+                    uint16_t i0 = indices[i + 0];
+                    uint16_t i1 = indices[i + 1];
+                    uint16_t i2 = indices[i + 2];
+
+                    tris.push_back({
+                        vertices[i0],
+                        vertices[i1],
+                        vertices[i2]
+                    });
+                }
+
+                return tris;
+            }
+
+            std::vector<Triangle> toTriangleListFromTriangleStrip(){
+                std::vector<Triangle> tris;
+                tris.reserve(indices.size());
+
+                bool flip = false;
+
+                for (size_t i = 0; i + 2 < indices.size(); ++i)
+                {
+                    uint16_t i0 = indices[i + 0];
+                    uint16_t i1 = indices[i + 1];
+                    uint16_t i2 = indices[i + 2];
+
+                    // skip degenerate triangles
+                    if (i0 == i1 || i1 == i2 || i0 == i2)
+                        continue;
+
+                    if (!flip) {
+                        // even tri: use natural order
+                        tris.push_back({
+                            vertices[i0],
+                            vertices[i1],
+                            vertices[i2]
+                        });
+                    } else {
+                        // odd tri: flip winding
+                        tris.push_back({
+                            vertices[i0],
+                            vertices[i2],
+                            vertices[i1]
+                        });
+                    }
+
+                    flip = !flip;
+                }
+
+                return tris;
+            }
+
+            std::vector<Triangle> toTriangleList(){
+                if (primitive == PrimitiveType::Triangles) {
+                    return toTriangleListFromTriangles();
+                } else {
+                    return toTriangleListFromTriangleStrip();
+                }
+            }
 
             void setName(std::string newName){
                 name = newName;

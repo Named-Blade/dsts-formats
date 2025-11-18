@@ -142,6 +142,10 @@ namespace dsts::geom
                         mesh.vertices.push_back(vertex);
                     }
 
+                    mesh.indices.resize(meshHeaders[i].index_count);
+                    f.seekg(base + meshHeaders[i].indices_offset);
+                    f.read(reinterpret_cast<char*>(mesh.indices.data()), sizeof(uint16_t) * meshHeaders[i].index_count);
+
                     meshes.push_back(mesh);
                 }
             }

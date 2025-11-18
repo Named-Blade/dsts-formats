@@ -142,6 +142,17 @@ void bind_mesh(py::module_ &m) {
     def_vertex_property(pyVertex, "index", &Vertex::index);
     def_vertex_property(pyVertex, "weight", &Vertex::weight);
 
+    py::class_<Triangle>(m, "Triangle")
+        .def(py::init<>())
+        .def_readwrite("v0", &Triangle::v0)
+        .def_readwrite("v1", &Triangle::v1)
+        .def_readwrite("v2", &Triangle::v2)
+        .def("__repr__", [](const Triangle& t) {
+            return "<Triangle v0=" + std::string(py::repr(py::cast(t.v0))) +
+                   " v1=" + std::string(py::repr(py::cast(t.v1))) +
+                   " v2=" + std::string(py::repr(py::cast(t.v2))) + ">";
+        });
+
     py::bind_vector<std::vector<Vertex>>(m, "VertexList");
 
     py::class_<Mesh>(m, "Mesh")
@@ -153,5 +164,7 @@ void bind_mesh(py::module_ &m) {
         )
         .def_readonly("name_hash", &Mesh::name_hash)
         .def_readwrite("vertices", &Mesh::vertices)
+        .def_readwrite("indices", &Mesh::indices)
+        .def("to_triangle_list", &Mesh::toTriangleList)
         .def("__repr__",[](const Mesh &m){ return "<Mesh :"+ m.name +">";});
 }
