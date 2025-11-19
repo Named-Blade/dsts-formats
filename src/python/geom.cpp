@@ -10,34 +10,7 @@ using namespace dsts::geom::binary;
 PYBIND11_MAKE_OPAQUE(std::vector<Mesh>)
 
 void bind_geom(py::module_ &m) {
-    py::bind_vector<std::vector<Mesh>>(m, "MeshList")
-        .def("__repr", [](const std::vector<Mesh> &v){
-            std::string out = "MeshList[";
-            for (int i = 0; i < v.size(); i++) {
-                out += "<Mesh :" + v[i].name + ">";
-                if (i != v.size()-1) {
-                    out += ", ";
-                }
-            }
-            out += "]";
-            return out;
-        });
-        //__repr__ doesn't overwrite for some reason in a bound vector, therefore you can have this nonsense instead.
-        py::dict locals;
-        py::exec(R"(
-            module_name = "dsts_formats"
-            module_already_loaded = module_name in __import__("sys").modules
-
-            if module_already_loaded:
-                mod = __import__(module_name)
-            else:
-                mod = __import__(module_name)
-
-            mod.MeshList.__repr__ = mod.MeshList.__repr
-
-            if not module_already_loaded:
-                del __import__("sys").modules[module_name]
-        )", py::globals(), locals);
+    py::bind_vector<std::vector<Mesh>>(m, "MeshList");
 
     py::class_<Geom>(m, "Geom")
         .def(py::init<>())

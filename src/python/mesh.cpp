@@ -147,6 +147,9 @@ void bind_mesh(py::module_ &m) {
         .def_readwrite("v0", &Triangle::v0)
         .def_readwrite("v1", &Triangle::v1)
         .def_readwrite("v2", &Triangle::v2)
+        .def_readwrite("i0", &Triangle::i0)
+        .def_readwrite("i1", &Triangle::i1)
+        .def_readwrite("i2", &Triangle::i2)
         .def("__repr__", [](const Triangle& t) {
             return "<Triangle v0=" + std::string(py::repr(py::cast(t.v0))) +
                    " v1=" + std::string(py::repr(py::cast(t.v1))) +

@@ -1,4 +1,5 @@
 from . import skeleton
+from . import mesh
 from . import utils
 from . import dsts_formats
 
@@ -20,7 +21,12 @@ class MY_OT_custom_import_operator(bpy.types.Operator):
     def execute(self, context):
         geom = dsts_formats.Geom.from_file("D:/SteamLibrary/steamapps/common/Digimon Story Time Stranger/gamedata/app_0.dx11/chr748.geom")
 
-        skeleton.import_skeleton(geom.skeleton, utils.unflop)
+        #skeleton.import_skeleton(geom.skeleton, utils.unflop)
+
+        bl_mesh = mesh.build_blender_mesh(geom.meshes[0])
+        obj = bpy.data.objects.new(geom.meshes[0].name, bl_mesh)
+        context.collection.objects.link(obj)
+
         self.report({'INFO'}, "Custom import executed!")
         return {'FINISHED'}
 

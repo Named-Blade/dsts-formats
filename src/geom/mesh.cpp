@@ -145,6 +145,7 @@ namespace dsts::geom
     };
 
     struct Triangle {
+        size_t i0,i1,i2;
         Vertex v0, v1, v2;
     };
 
@@ -173,6 +174,9 @@ namespace dsts::geom
                     uint16_t i2 = indices[i + 2];
 
                     tris.push_back({
+                        i0,
+                        i1,
+                        i2,
                         vertices[i0],
                         vertices[i1],
                         vertices[i2]
@@ -201,6 +205,9 @@ namespace dsts::geom
                     if (!flip) {
                         // even tri: use natural order
                         tris.push_back({
+                            i0,
+                            i1,
+                            i2,
                             vertices[i0],
                             vertices[i1],
                             vertices[i2]
@@ -208,6 +215,9 @@ namespace dsts::geom
                     } else {
                         // odd tri: flip winding
                         tris.push_back({
+                            i0,
+                            i1,
+                            i2,
                             vertices[i0],
                             vertices[i2],
                             vertices[i1]
