@@ -24,9 +24,11 @@ def build_blender_mesh(bl_mesh: dsts_formats.Mesh, coord_transform=None):
     mesh = bpy.data.meshes.new(bl_mesh.name)
     bm = bmesh.new()
 
+    idx_layer = bm.verts.layers.int.new("idx_layer")
+
     # --- Create vertex BMVerts ---
     bm_verts = []
-    for v in verts:
+    for idx,v in enumerate(verts):
         pos = Vector((float(v.position[0]),
                       float(v.position[1]),
                       float(v.position[2])))
@@ -35,7 +37,9 @@ def build_blender_mesh(bl_mesh: dsts_formats.Mesh, coord_transform=None):
         if coord_transform is not None:
             pos = coord_transform(pos)
         
-        bm_verts.append(bm.verts.new(pos))
+        vert = bm.verts.new(pos)
+        vert[idx_layer] = idx
+        bm_verts.append(vert)
     bm.verts.ensure_lookup_table()
 
     # --- Create triangles ---
@@ -58,7 +62,7 @@ def build_blender_mesh(bl_mesh: dsts_formats.Mesh, coord_transform=None):
     # Assign UVs
     for face in bm.faces:
         for loop in face.loops:
-            v = verts[loop.vert.index]
+            v = verts[loop.vert[idx_layer]]
             for attr, layer in uv_layers:
                 uv = getattr(v, attr)
                 if uv is not None:
@@ -72,7 +76,7 @@ def build_blender_mesh(bl_mesh: dsts_formats.Mesh, coord_transform=None):
         color_layer = bm.loops.layers.color.new("Col")
         for face in bm.faces:
             for loop in face.loops:
-                c = verts[loop.vert.index].color
+                c = verts[loop.vert[idx_layer]].color
                 if c is not None:
                     loop[color_layer] = (
                         float(c[0]),
