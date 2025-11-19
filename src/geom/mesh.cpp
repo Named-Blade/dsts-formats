@@ -6,6 +6,8 @@
 #include <array>
 #include <string>
 #include <memory>
+#include <algorithm>
+#include <cmath>
 
 #include "../utils/hash.cpp"
 #include "../utils/float16.cpp"
@@ -230,4 +232,74 @@ namespace dsts::geom
                 name_hash = crc32((const uint8_t*)name.data(),name.length());
             }
     };
+
+    struct BoundingInfo {
+        std::array<float ,3> centre;
+        std::array<float ,3> bbox;
+        float bounding_sphere_radius;
+    };
+
+    BoundingInfo boundingFromHeader(binary::MeshHeader &m) {
+        BoundingInfo info;
+        info.centre = std::array<float ,3>{m.centre[0],m.centre[1],m.centre[2]};
+        info.bbox = std::array<float ,3>{m.bbox[0],m.bbox[1],m.bbox[2]};
+        info.bounding_sphere_radius = m.bounding_sphere_radius;
+        return info;
+    }
+
+    bool boundingEquals(BoundingInfo a, BoundingInfo b, float eps = 1e-4f) {
+        if (std::fabs(a.bounding_sphere_radius - b.bounding_sphere_radius) > eps) {
+            return false;
+        }
+        for (int i = 0; i < 3; ++i) {
+            if (std::fabs(a.centre[i] - b.centre[i]) > eps) {
+                return false;
+            }
+        }
+        for (int i = 0; i < 3; ++i) {
+            if (std::fabs(a.bbox[i] - b.bbox[i]) > eps) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    template<typename T>
+	BoundingInfo calculateBoundingInfo(const std::vector<std::array<T, 3>>& positions) {
+        BoundingInfo info{};
+
+        if (positions.empty()) {
+            return info; // returns zeros
+        }
+
+        std::array<T, 3> min_corner = positions[0];
+        std::array<T, 3> max_corner = positions[0];
+
+        // Compute min and max
+        for (const auto& p : positions) {
+            for (int i = 0; i < 3; ++i) {
+                min_corner[i] = std::min(min_corner[i], p[i]);
+                max_corner[i] = std::max(max_corner[i], p[i]);
+            }
+        }
+
+        // Centre = (min + max) / 2
+        for (int i = 0; i < 3; ++i) {
+            info.centre[i] = (min_corner[i] + max_corner[i]) * 0.5;
+            info.bbox[i]   = (max_corner[i] - min_corner[i]) * 0.5; // half extents
+        }
+
+        // Bounding sphere radius: max distance from centre
+        T max_dist = 0.0;
+        for (const auto& p : positions) {
+            T dx = p[0] - info.centre[0];
+            T dy = p[1] - info.centre[1];
+            T dz = p[2] - info.centre[2];
+            T dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+            max_dist = std::max(max_dist, dist);
+        }
+
+        info.bounding_sphere_radius = max_dist;
+        return info;
+    }
 }
