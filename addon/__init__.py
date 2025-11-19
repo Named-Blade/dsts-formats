@@ -4,6 +4,9 @@ from . import utils
 from . import dsts_formats
 
 import bpy
+from bpy_extras.io_utils import ImportHelper
+from bpy.props import StringProperty
+from bpy.types import Operator
 
 bl_info = {
     "name": "Dsts Formats",
@@ -14,12 +17,22 @@ bl_info = {
 }
 
 
-class MY_OT_custom_import_operator(bpy.types.Operator):
-    bl_idname = "import_scene.my_custom_import"
-    bl_label = "My Custom Import"
+class MY_OT_dsts_geom_import_operator(Operator, ImportHelper):
+    bl_idname = "import_scene.dsts_geom_import"
+    bl_label = "DSTS .geom import"
+
+    # Filter file extensions (optional)
+    filename_ext = ".geom"
+    filter_glob: StringProperty(
+        default="*.geom",
+        options={'HIDDEN'}
+    )
 
     def execute(self, context):
-        geom = dsts_formats.Geom.from_file("D:/SteamLibrary/steamapps/common/Digimon Story Time Stranger/gamedata/app_0.dx11/chr748.geom")
+        # self.filepath now contains the user-selected path
+        filepath = self.filepath
+
+        geom = dsts_formats.Geom.from_file(filepath)
 
         skeleton.import_skeleton(geom.skeleton, utils.unflop)
         for mesh_obj in geom.meshes:
@@ -31,12 +44,12 @@ class MY_OT_custom_import_operator(bpy.types.Operator):
         return {'FINISHED'}
 
 def menu_func_import(self, context):
-    self.layout.operator(MY_OT_custom_import_operator.bl_idname, text="My Custom Import")
+    self.layout.operator(MY_OT_dsts_geom_import_operator.bl_idname, text="DSTS .geom import")
 
 def register():
-    bpy.utils.register_class(MY_OT_custom_import_operator)
+    bpy.utils.register_class(MY_OT_dsts_geom_import_operator)
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
 
 def unregister():
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
-    bpy.utils.unregister_class(MY_OT_custom_import_operator)
+    bpy.utils.unregister_class(MY_OT_dsts_geom_import_operator)
