@@ -22,7 +22,7 @@ namespace dsts::geom::binary
         char padding2[0x4];
         uint32_t unknown_0x30;
         uint32_t unknown_0x34;
-        int64_t skeleton_size;
+        uint64_t skeleton_size;
         char padding3[0x8];
         
         uint64_t mesh_offset;

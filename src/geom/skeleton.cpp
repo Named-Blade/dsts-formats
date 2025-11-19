@@ -164,7 +164,7 @@ namespace dsts::geom
                 }
             }
 
-            void write(std::ostream& f, int skeleton_base = 0, int base = 0) {
+            uint64_t write(std::ostream& f, int skeleton_base = 0, int base = 0) {
                 assert(allParentsValid());
 
                 binary::SkeletonHeader header;
@@ -232,6 +232,8 @@ namespace dsts::geom
 
                 f.seekp(skeleton_start);
                 f.write(reinterpret_cast<char*>(&header), sizeof(binary::SkeletonHeader));
+
+                return header.skeleton_file_size;
             }
     };
     
