@@ -133,9 +133,13 @@ namespace dsts::geom
                     mesh.flag_6 = meshHeaders[i].flags.flag_6;
                     mesh.flag_7 = meshHeaders[i].flags.flag_7;
 
-                    std::vector<uint32_t> matrix_pallete(meshHeaders[i].matrix_palette_count);
+                    std::vector<uint32_t> matrix_palette(meshHeaders[i].matrix_palette_count);
                     f.seekg(base + meshHeaders[i].matrix_palette_offset);
-                    f.read(reinterpret_cast<char*>(matrix_pallete.data()), sizeof(uint32_t) * meshHeaders[i].matrix_palette_count);
+                    f.read(reinterpret_cast<char*>(matrix_palette.data()), sizeof(uint32_t) * meshHeaders[i].matrix_palette_count);
+
+                    for(int y = 0; y < matrix_palette.size(); y++) {
+                        mesh.matrix_palette.push_back(skeleton.bones[matrix_palette[y]]);
+                    }
 
                     mesh.name_hash = meshHeaders[i].name_hash;
                     if (mesh.name_hash != 0 && meshHeaders[i].name_offset != 0) {
@@ -175,19 +179,6 @@ namespace dsts::geom
                         for (size_t y = 0; y < count; y++) {
                             const uint8_t* vptr = allVertices.data() + vpv * y;
                             mesh.vertices.emplace_back(vptr, meshAttributes);
-                        }
-
-                        for (size_t y = 0; y < count; y++) {
-                            auto vert = mesh.vertices[y];
-                            std::visit([&](auto& vec) {
-                                using T = std::decay_t<decltype(vec)>;
-
-                                if constexpr (!std::is_same_v<T, std::monostate>) {
-                                    for (size_t z = 0; z < vec.size(); z++) {
-                                        vec.at(z) = static_cast<typename T::value_type>(matrix_pallete.at(vec.at(z)));
-                                    }
-                                }
-                            }, vert.index.data);
                         }
                     }
 

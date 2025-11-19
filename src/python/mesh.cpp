@@ -177,7 +177,7 @@ void bind_mesh(py::module_ &m) {
         .def_readwrite("flag_6", &Mesh::flag_6)
         .def_readwrite("flag_7", &Mesh::flag_7)
         .def_property(
-        "vertices",
+            "vertices",
             [](const Mesh &m) {
                 return &m.vertices;
             },
@@ -194,7 +194,7 @@ void bind_mesh(py::module_ &m) {
             }
         )
         .def_property(
-        "indices",
+            "indices",
             [](const Mesh &m) {
                 return &m.indices;
             },
@@ -208,6 +208,23 @@ void bind_mesh(py::module_ &m) {
                     indices.push_back(py::cast<uint16_t>(item));
                 }
                 m.indices = std::move(indices);
+            }
+        )
+        .def_property(
+            "matrix_palette",
+            [](const Mesh &m) {
+                return &m.matrix_palette;
+            },
+            [](Mesh &m, py::object obj) {
+                if (py::isinstance<std::vector<std::shared_ptr<Bone>>>(obj)) {
+                    m.matrix_palette = obj.cast<std::vector<std::shared_ptr<Bone>>>();
+                    return;
+                }
+                std::vector<std::shared_ptr<Bone>> bones;
+                for (auto item : obj) {
+                    bones.push_back(py::cast<std::shared_ptr<Bone>>(item));
+                }
+                m.matrix_palette = std::move(bones);
             }
         )
         .def("to_triangle_list", &Mesh::toTriangleList)

@@ -78,7 +78,7 @@ void bind_skeleton(py::module_ &m) {
     py::class_<Skeleton>(m, "Skeleton")
         .def(py::init<>())
         .def_property(
-        "bones",
+            "bones",
             [](const Skeleton &s) {
                 return &s.bones;
             },

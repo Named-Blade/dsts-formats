@@ -16,7 +16,7 @@ void bind_geom(py::module_ &m) {
         .def(py::init<>())
         .def_readwrite("skeleton", &Geom::skeleton)
         .def_property(
-        "meshes",
+            "meshes",
             [](const Geom &g) {
                 return &g.meshes;
             },
