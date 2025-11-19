@@ -54,10 +54,11 @@ class MY_OT_dsts_geom_import_operator(Operator, ImportHelper):
 
             # Assign weights
             for v_idx, vert in enumerate(mesh_obj.vertices):
-                for mi, weight in zip(mesh_obj.vertices[v_idx].index, mesh_obj.vertices[v_idx].weight):
-                    bone_name = palette_to_bone[mi]
-                    vg = obj.vertex_groups[bone_name]
-                    vg.add([v_idx], weight, 'ADD')
+                if mesh_obj.vertices[v_idx].index is not None and mesh_obj.vertices[v_idx].weight is not None:
+                    for mi, weight in zip(mesh_obj.vertices[v_idx].index, mesh_obj.vertices[v_idx].weight):
+                        bone_name = palette_to_bone[mi]
+                        vg = obj.vertex_groups[bone_name]
+                        vg.add([v_idx], weight, 'ADD')
 
             # Parent to armature
             obj.parent = armature_obj
