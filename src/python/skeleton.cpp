@@ -61,6 +61,7 @@ void bind_skeleton(py::module_ &m) {
         .def_readonly("name_hash", &Bone::name_hash) 
         .def_readwrite("transform", &Bone::transform)
         .def_readwrite("transform_actual", &Bone::transform_actual)
+        .def_readwrite("is_effect", &Bone::is_effect)
         .def_readwrite("parent", &Bone::parent)
         .def("__repr__", [](const Bone &b){ return "<Bone :" + b.name + ">";});
 

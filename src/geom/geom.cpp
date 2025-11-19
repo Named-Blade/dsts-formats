@@ -98,6 +98,7 @@ namespace dsts::geom
                 for (int i = 0; i < skeleton.bones.size(); i++) {
                     if (skeleton.bones[i]->name.rfind("ef_") == 0) {
                         assert(ibpmEqual(ibpms[i],binary::Ibpm()));
+                        skeleton.bones[i]->is_effect = true;
                     } else {
                         assert(ibpmEqual(ibpms[i], ibpmFromMatrix(ComputeInverseBindPose(skeleton.bones[i]))));
                         skeleton.bones[i]->transform_actual = DecomposeMatrix(MatrixFromIbpm(ibpms[i]).inverse());
@@ -106,7 +107,7 @@ namespace dsts::geom
 
                 for (int i = 0; i < skeleton.bones.size(); i++) {
                     auto b = *skeleton.bones[i].get();
-                    if (b.name.rfind("ef_") != 0) {
+                    if (!b.is_effect) {
                         assert(transformEqual(b.transform_actual,getAbsoluteTransform(b.transform, b.parent ? &b.parent->transform_actual : nullptr)));
                         assert(transformEqual(b.transform,getRelativeTransform(b.transform_actual, b.parent ? &b.parent->transform_actual : nullptr)));
                     }
