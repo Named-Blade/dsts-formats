@@ -15,7 +15,23 @@ void bind_geom(py::module_ &m) {
     py::class_<Geom>(m, "Geom")
         .def(py::init<>())
         .def_readwrite("skeleton", &Geom::skeleton)
-        .def_readwrite("meshes", &Geom::meshes)
+        .def_property(
+        "meshes",
+            [](const Geom &g) {
+                return &g.meshes;
+            },
+            [](Geom &g, py::object obj) {
+                if (py::isinstance<std::vector<Mesh>>(obj)) {
+                    g.meshes = obj.cast<std::vector<Mesh>>();
+                    return;
+                }
+                std::vector<Mesh> meshes;
+                for (auto item : obj) {
+                    meshes.push_back(py::cast<Mesh>(item));
+                }
+                g.meshes = std::move(meshes);
+            }
+        )
         .def_static("from_bytes", [](py::bytes data, int base){
             Geom geom;
             std::string buf = data;

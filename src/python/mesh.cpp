@@ -8,6 +8,7 @@ using namespace dsts::geom;
 using namespace dsts::geom::binary;
 
 PYBIND11_MAKE_OPAQUE(std::vector<Vertex>)
+PYBIND11_MAKE_OPAQUE(std::vector<uint16_t>)
 
 // ---------- Convert C++ vector → NumPy array ----------
 struct AttributeToNumpy {
@@ -157,6 +158,7 @@ void bind_mesh(py::module_ &m) {
         });
 
     py::bind_vector<std::vector<Vertex>>(m, "VertexList");
+    py::bind_vector<std::vector<uint16_t>>(m, "IndexList");
 
     py::class_<Mesh>(m, "Mesh")
         .def(py::init<>())
@@ -166,8 +168,40 @@ void bind_mesh(py::module_ &m) {
             &Mesh::setName
         )
         .def_readonly("name_hash", &Mesh::name_hash)
-        .def_readwrite("vertices", &Mesh::vertices)
-        .def_readwrite("indices", &Mesh::indices)
+        .def_property(
+        "vertices",
+            [](const Mesh &m) {
+                return &m.vertices;
+            },
+            [](Mesh &m, py::object obj) {
+                if (py::isinstance<std::vector<Vertex>>(obj)) {
+                    m.vertices = obj.cast<std::vector<Vertex>>();
+                    return;
+                }
+                std::vector<Vertex> verts;
+                for (auto item : obj) {
+                    verts.push_back(py::cast<Vertex>(item));
+                }
+                m.vertices = std::move(verts);
+            }
+        )
+        .def_property(
+        "indices",
+            [](const Mesh &m) {
+                return &m.indices;
+            },
+            [](Mesh &m, py::object obj) {
+                if (py::isinstance<std::vector<uint16_t>>(obj)) {
+                    m.indices = obj.cast<std::vector<uint16_t>>();
+                    return;
+                }
+                std::vector<uint16_t> indices;
+                for (auto item : obj) {
+                    indices.push_back(py::cast<uint16_t>(item));
+                }
+                m.indices = std::move(indices);
+            }
+        )
         .def("to_triangle_list", &Mesh::toTriangleList)
         .def("__repr__",[](const Mesh &m){ return "<Mesh :"+ m.name +">";});
 }

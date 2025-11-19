@@ -77,7 +77,23 @@ void bind_skeleton(py::module_ &m) {
 
     py::class_<Skeleton>(m, "Skeleton")
         .def(py::init<>())
-        .def_readwrite("bones", &Skeleton::bones)
+        .def_property(
+        "bones",
+            [](const Skeleton &s) {
+                return &s.bones;
+            },
+            [](Skeleton &s, py::object obj) {
+                if (py::isinstance<std::vector<std::shared_ptr<Bone>>>(obj)) {
+                    s.bones = obj.cast<std::vector<std::shared_ptr<Bone>>>();
+                    return;
+                }
+                std::vector<std::shared_ptr<Bone>> bones;
+                for (auto item : obj) {
+                    bones.push_back(py::cast<std::shared_ptr<Bone>>(item));
+                }
+                s.bones = std::move(bones);
+            }
+        )
         //.def_readwrite("float_channels", &Skeleton::float_channels)
         .def_static("from_bytes", [](py::bytes data, int skeleton_base, int base){
             Skeleton s;
