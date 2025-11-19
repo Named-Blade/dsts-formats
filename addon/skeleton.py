@@ -14,8 +14,8 @@ def import_skeleton(skeleton, coordinate_remap=None):
     to keep proportions consistent.
     """
 
-    armature_data = bpy.data.armatures.new("ImportedSkeleton")
-    armature_obj = bpy.data.objects.new("ImportedSkeleton", armature_data)
+    armature_data = bpy.data.armatures.new("Skeleton")
+    armature_obj = bpy.data.objects.new("Geom", armature_data)
     bpy.context.collection.objects.link(armature_obj)
     bpy.context.view_layer.objects.active = armature_obj
     bpy.ops.object.mode_set(mode='EDIT')
@@ -71,7 +71,8 @@ def import_skeleton(skeleton, coordinate_remap=None):
     # ---------------------------------------------------------
     for bone in skeleton.bones:
         edit_bone = armature_data.edit_bones.new(bone.name)
-        bone_map[bone.name] = edit_bone
+        bone_map[edit_bone.name] = edit_bone
+        bone.name = edit_bone.name
 
     # ---------------------------------------------------------
     # Compute head positions and children

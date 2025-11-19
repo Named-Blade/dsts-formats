@@ -34,11 +34,35 @@ class MY_OT_dsts_geom_import_operator(Operator, ImportHelper):
 
         geom = dsts_formats.Geom.from_file(filepath)
 
-        skeleton.import_skeleton(geom.skeleton, utils.unflop)
+        armature_obj = skeleton.import_skeleton(geom.skeleton, utils.unflop)
+
         for mesh_obj in geom.meshes:
             bl_mesh = mesh.build_blender_mesh(mesh_obj, utils.unflop)
             obj = bpy.data.objects.new(mesh_obj.name, bl_mesh)
             context.collection.objects.link(obj)
+
+            # Create vertex groups
+            for bone in armature_obj.data.bones:
+                obj.vertex_groups.new(name=bone.name)
+
+            # Map palette to bone names
+            palette_to_bone = {}
+            for idx, bone_data in enumerate(mesh_obj.matrix_palette):
+                for bone in armature_obj.data.bones:
+                    if bone_data.name == bone.name:
+                        palette_to_bone[idx] = bone.name
+
+            # Assign weights
+            for v_idx, vert in enumerate(mesh_obj.vertices):
+                for mi, weight in zip(mesh_obj.vertices[v_idx].index, mesh_obj.vertices[v_idx].weight):
+                    bone_name = palette_to_bone[mi]
+                    vg = obj.vertex_groups[bone_name]
+                    vg.add([v_idx], weight, 'ADD')
+
+            # Parent to armature
+            obj.parent = armature_obj
+            mod = obj.modifiers.new(name="Armature", type='ARMATURE')
+            mod.object = armature_obj
 
         self.report({'INFO'}, "Custom import executed!")
         return {'FINISHED'}
