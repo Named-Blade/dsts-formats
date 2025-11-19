@@ -188,9 +188,10 @@ namespace dsts::geom
 
                     //bounding sanity check
                     std::vector<std::array<float, 3>> pos;
-                    for (int i = 0; i < mesh.vertices.size() ; i++){
-                        auto floats = std::get<std::vector<float>>(mesh.vertices[i].position.data);
-                        pos.push_back(std::array<float, 3>{floats[0],floats[1],floats[2]});
+                    pos.reserve(mesh.vertices.size());
+                    for (const auto& vertex : mesh.vertices) {
+                        const auto& floats = std::get<std::vector<float>>(vertex.position.data);
+                        pos.emplace_back(std::array<float, 3>{floats[0], floats[1], floats[2]});
                     }
                     BoundingInfo info = calculateBoundingInfo<float>(pos);
 
