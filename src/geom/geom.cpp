@@ -86,12 +86,10 @@ namespace dsts::geom
                     hash_to_bone_name[hash] = name;
                 }
 
-                std::unordered_map<std::string, std::shared_ptr<Bone>> name_to_bone;
                 for (auto& bone : skeleton.bones) {
                     auto it = hash_to_bone_name.find(bone->name_hash);
                     if (it != hash_to_bone_name.end()) {
                         bone->name = it->second;
-                        name_to_bone[bone->name] = bone;
                     }
                 }
 
@@ -211,6 +209,9 @@ namespace dsts::geom
                     binary::MaterialHeader materialHeader;
                     f.read(reinterpret_cast<char*>(&materialHeader), sizeof(materialHeader));
 
+                    material.name_hash = materialHeader.name_hash;
+                    
+
                     for (int y = 0; y < 14; y++) {
                         std::copy(std::begin(materialHeader.shaders[y].name_data), std::end(materialHeader.shaders[y].name_data), material.shaders[y].name_data.begin());
                     }
@@ -219,6 +220,19 @@ namespace dsts::geom
                     f.seekg((uint64_t)f.tellg() + (materialHeader.uniform_count * 0x20) + (materialHeader.setting_count * 0x20));
 
                     materials.push_back(material);
+                }
+
+                std::unordered_map<uint32_t, std::string> hash_to_material_name;
+                for (const auto& name : material_names) {
+                    uint32_t hash = crc32((const uint8_t*)name.c_str(), name.length());
+                    hash_to_material_name[hash] = name;
+                }
+
+                for (auto& material : materials) {
+                    auto it = hash_to_material_name.find(material.name_hash);
+                    if (it != hash_to_material_name.end()) {
+                        material.name = it->second;
+                    }
                 }
 
             }
