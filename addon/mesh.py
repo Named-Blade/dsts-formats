@@ -10,9 +10,13 @@ from . import dsts_formats
 # ----------------------------------------------------------
 # Convert Mesh → Blender Mesh
 # ----------------------------------------------------------
-def build_blender_mesh(bl_mesh: dsts_formats.Mesh):
-    """Convert a C++ Mesh object to a Blender mesh."""
-
+def build_blender_mesh(bl_mesh: dsts_formats.Mesh, coord_transform=None):
+    """Convert a C++ Mesh object to a Blender mesh.
+    
+    coord_transform: optional function that takes a mathutils.Matrix or Vector
+                     and returns a transformed version.
+    """
+    
     verts = [x for x in bl_mesh.vertices]
     tris = [x for x in bl_mesh.to_triangle_list()]
 
@@ -26,6 +30,11 @@ def build_blender_mesh(bl_mesh: dsts_formats.Mesh):
         pos = Vector((float(v.position[0]),
                       float(v.position[1]),
                       float(v.position[2])))
+        
+        # Apply coordinate transform if given
+        if coord_transform is not None:
+            pos = coord_transform(pos)
+        
         bm_verts.append(bm.verts.new(pos))
     bm.verts.ensure_lookup_table()
 
@@ -78,10 +87,14 @@ def build_blender_mesh(bl_mesh: dsts_formats.Mesh):
 
     # --- Normals ---
     if hasattr(verts[0], "normal"):
-        mesh.normals_split_custom_set_from_vertices(
-            [(float(v.normal[0]),
-              float(v.normal[1]),
-              float(v.normal[2])) for v in verts]
-        )
+        normals = [(float(v.normal[0]),
+                    float(v.normal[1]),
+                    float(v.normal[2])) for v in verts]
+
+        # Apply coordinate transform to normals if matrix-like
+        if coord_transform is not None:
+            normals = [coord_transform(Vector(n)) for n in normals]
+
+        mesh.normals_split_custom_set_from_vertices(normals)
 
     return mesh

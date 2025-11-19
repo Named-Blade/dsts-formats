@@ -23,7 +23,7 @@ class MY_OT_custom_import_operator(bpy.types.Operator):
 
         #skeleton.import_skeleton(geom.skeleton, utils.unflop)
 
-        bl_mesh = mesh.build_blender_mesh(geom.meshes[0])
+        bl_mesh = mesh.build_blender_mesh(geom.meshes[0], utils.unflop)
         obj = bpy.data.objects.new(geom.meshes[0].name, bl_mesh)
         context.collection.objects.link(obj)
 
