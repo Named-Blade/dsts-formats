@@ -29,17 +29,21 @@ class MY_OT_dsts_geom_import_operator(Operator, ImportHelper):
     )
 
     def execute(self, context):
-        # self.filepath now contains the user-selected path
         filepath = self.filepath
-
         geom = dsts_formats.Geom.from_file(filepath)
 
-        armature_obj = skeleton.import_skeleton(geom.skeleton, utils.unflop)
+        # Create a new collection for the imported objects
+        new_collection = bpy.data.collections.new(name="Geom")
+        context.scene.collection.children.link(new_collection)
+
+        armature_obj = skeleton.import_skeleton(geom.skeleton, new_collection, utils.unflop)
 
         for mesh_obj in geom.meshes:
             bl_mesh = mesh.build_blender_mesh(mesh_obj, utils.unflop)
             obj = bpy.data.objects.new(mesh_obj.name, bl_mesh)
-            context.collection.objects.link(obj)
+
+            # Link object to the new collection instead of the active one
+            new_collection.objects.link(obj)
 
             # Create vertex groups
             for bone in armature_obj.data.bones:

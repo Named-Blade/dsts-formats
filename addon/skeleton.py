@@ -5,7 +5,7 @@ import statistics
 import math
 
 
-def import_skeleton(skeleton, coordinate_remap=None):
+def import_skeleton(skeleton, target_collection=None, coordinate_remap=None):
     """
     Imports a Skeleton object into Blender as an armature.
     Bone transforms are parent-relative (bind pose).
@@ -16,7 +16,13 @@ def import_skeleton(skeleton, coordinate_remap=None):
 
     armature_data = bpy.data.armatures.new("Skeleton")
     armature_obj = bpy.data.objects.new("Geom", armature_data)
-    bpy.context.collection.objects.link(armature_obj)
+    
+    # Link to the target collection, fallback to current collection
+    if target_collection is not None:
+        target_collection.objects.link(armature_obj)
+    else:
+        bpy.context.collection.objects.link(armature_obj)
+
     bpy.context.view_layer.objects.active = armature_obj
     bpy.ops.object.mode_set(mode='EDIT')
 
