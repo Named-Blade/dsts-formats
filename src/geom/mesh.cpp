@@ -59,36 +59,23 @@ namespace dsts::geom
             }
 
             VertexAttribute(const binary::MeshAttribute& desc,
-                            std::istream& stream,
-                            std::streampos baseOffset)
+                            const uint8_t* basePtr)
             {
-                // Seek to attribute position
-                stream.seekg(baseOffset + static_cast<std::streamoff>(desc.offset),
-                            std::ios::beg);
-
-                if (!stream.good()) {
-                    data = std::monostate{};
-                    return;
-                }
+                const uint8_t* ptr = basePtr + desc.offset;
 
                 switch (desc.dtype) {
-                    case binary::Dtype::uByte:   data = loadVec<uint8_t>(stream, desc.count); break;
-                    case binary::Dtype::sByte:   data = loadVec<int8_t>(stream, desc.count); break;
-                    case binary::Dtype::uShort:  data = loadVec<uint16_t>(stream, desc.count); break;
-                    case binary::Dtype::sShort:  data = loadVec<int16_t>(stream, desc.count); break;
-                    case binary::Dtype::uInt:    data = loadVec<uint32_t>(stream, desc.count); break;
-                    case binary::Dtype::sInt:    data = loadVec<int32_t>(stream, desc.count); break;
-
+                    case binary::Dtype::uByte:   data = loadVecMem<uint8_t>(ptr, desc.count); break;
+                    case binary::Dtype::sByte:   data = loadVecMem<int8_t>(ptr, desc.count); break;
+                    case binary::Dtype::uShort:  data = loadVecMem<uint16_t>(ptr, desc.count); break;
+                    case binary::Dtype::sShort:  data = loadVecMem<int16_t>(ptr, desc.count); break;
+                    case binary::Dtype::uInt:    data = loadVecMem<uint32_t>(ptr, desc.count); break;
+                    case binary::Dtype::sInt:    data = loadVecMem<int32_t>(ptr, desc.count); break;
                     case binary::Dtype::Float:
                     case binary::Dtype::Float_alias:
-                        data = loadVec<float>(stream, desc.count);
-                        break;
-
+                                                data = loadVecMem<float>(ptr, desc.count); break;
                     case binary::Dtype::Float16:
                     case binary::Dtype::Float16_alias:
-                        data = loadVec<float16>(stream, desc.count);
-                        break;
-
+                                                data = loadVecMem<float16>(ptr, desc.count); break;
                     default: assert(false);
                 }
             }
@@ -97,10 +84,9 @@ namespace dsts::geom
 
         private:
             template<typename T>
-            std::vector<T> loadVec(std::istream& stream, size_t count) {
+            std::vector<T> loadVecMem(const uint8_t* ptr, size_t count) {
                 std::vector<T> out(count);
-                stream.read(reinterpret_cast<char*>(out.data()),
-                            static_cast<std::streamsize>(count * sizeof(T)));
+                memcpy(out.data(), ptr, count * sizeof(T));
                 return out;
             }
     };
@@ -121,23 +107,22 @@ namespace dsts::geom
 
             Vertex() = default;
 
-            Vertex(std::istream& stream,
-                std::streampos baseOffset,
+            Vertex(const uint8_t* vertexBuffer,
                 const std::vector<binary::MeshAttribute>& attributes)
             {
                 for (const auto& desc : attributes) {
                     switch (desc.atype) {
-                    case Atype::Position: position = VertexAttribute(desc, stream, baseOffset); break;
-                    case Atype::Normal:   normal   = VertexAttribute(desc, stream, baseOffset); break;
-                    case Atype::Tangent:  tangent  = VertexAttribute(desc, stream, baseOffset); break;
-                    case Atype::Binormal: binormal = VertexAttribute(desc, stream, baseOffset); break;
-                    case Atype::UV1:      uv1      = VertexAttribute(desc, stream, baseOffset); break;
-                    case Atype::UV2:      uv2      = VertexAttribute(desc, stream, baseOffset); break;
-                    case Atype::UV3:      uv3      = VertexAttribute(desc, stream, baseOffset); break;
-                    case Atype::unk_8:    unk_8    = VertexAttribute(desc, stream, baseOffset); break;
-                    case Atype::Color:    color    = VertexAttribute(desc, stream, baseOffset); break;
-                    case Atype::Index:    index    = VertexAttribute(desc, stream, baseOffset); break;
-                    case Atype::Weight:   weight   = VertexAttribute(desc, stream, baseOffset); break;
+                    case Atype::Position: position = VertexAttribute(desc, vertexBuffer); break;
+                    case Atype::Normal:   normal   = VertexAttribute(desc, vertexBuffer); break;
+                    case Atype::Tangent:  tangent  = VertexAttribute(desc, vertexBuffer); break;
+                    case Atype::Binormal: binormal = VertexAttribute(desc, vertexBuffer); break;
+                    case Atype::UV1:      uv1      = VertexAttribute(desc, vertexBuffer); break;
+                    case Atype::UV2:      uv2      = VertexAttribute(desc, vertexBuffer); break;
+                    case Atype::UV3:      uv3      = VertexAttribute(desc, vertexBuffer); break;
+                    case Atype::unk_8:    unk_8    = VertexAttribute(desc, vertexBuffer); break;
+                    case Atype::Color:    color    = VertexAttribute(desc, vertexBuffer); break;
+                    case Atype::Index:    index    = VertexAttribute(desc, vertexBuffer); break;
+                    case Atype::Weight:   weight   = VertexAttribute(desc, vertexBuffer); break;
                     default: assert(false);
                     }
                 }
