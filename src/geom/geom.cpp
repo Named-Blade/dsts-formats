@@ -13,6 +13,7 @@
 
 #include "skeleton.cpp"
 #include "mesh.cpp"
+#include "material.cpp"
 #include "../utils/hash.cpp"
 
 namespace dsts::geom
@@ -25,6 +26,7 @@ namespace dsts::geom
 
             Skeleton skeleton;
             std::vector<Mesh> meshes;
+            std::vector<Material> materials;
 
             void read(std::istream& f, int base = 0){
                 binary::GeomHeader header;
@@ -197,8 +199,29 @@ namespace dsts::geom
 
                     assert(boundingEquals(info,boundingFromHeader(meshHeaders[i])));
 
+                    assert(meshHeaders[i].controller_offset == 0);
+
                     meshes.push_back(mesh);
                 }
+
+                f.seekg(base + header.material_offset);
+                for (int i = 0; i < header.material_count ; i++){
+                    Material material;
+
+                    binary::MaterialHeader materialHeader;
+                    f.read(reinterpret_cast<char*>(&materialHeader), sizeof(materialHeader));
+
+                    for (int y = 0; y < 14; y++) {
+                        std::copy(std::begin(materialHeader.shaders[y].name_data), std::end(materialHeader.shaders[y].name_data), material.shaders[y].name_data.begin());
+                    }
+
+                    //placeholder fow now
+                    f.seekg((uint64_t)f.tellg() + (materialHeader.uniform_count * 0x20) + (materialHeader.setting_count * 0x20));
+
+                    materials.push_back(material);
+                }
+
             }
+
     };
 }
