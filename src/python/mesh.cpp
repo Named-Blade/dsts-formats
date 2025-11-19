@@ -168,6 +168,14 @@ void bind_mesh(py::module_ &m) {
             &Mesh::setName
         )
         .def_readonly("name_hash", &Mesh::name_hash)
+        .def_readwrite("flag_0", &Mesh::flag_0)
+        .def_readwrite("flag_1", &Mesh::flag_1)
+        .def_readwrite("flag_2", &Mesh::flag_2)
+        .def_readwrite("flag_3", &Mesh::flag_3)
+        .def_readwrite("flag_4", &Mesh::flag_4)
+        .def_readwrite("flag_5", &Mesh::flag_5)
+        .def_readwrite("flag_6", &Mesh::flag_6)
+        .def_readwrite("flag_7", &Mesh::flag_7)
         .def_property(
         "vertices",
             [](const Mesh &m) {

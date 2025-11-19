@@ -150,6 +150,15 @@ namespace dsts::geom
             std::vector<uint16_t> indices;
             PrimitiveType primitive;
 
+            bool flag_0;
+            bool flag_1;
+            bool flag_2;
+            bool flag_3;
+            bool flag_4;
+            bool flag_5;
+            bool flag_6;
+            bool flag_7;
+
             std::vector<Triangle> toTriangleListFromTriangles() {
                 std::vector<Triangle> tris;
                 tris.reserve(indices.size() / 3);

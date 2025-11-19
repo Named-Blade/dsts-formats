@@ -6,6 +6,17 @@ namespace dsts::geom::binary
 {   
     #pragma pack(push, 1)
 
+    struct MeshFlags {
+        bool flag_0 : 1;
+        bool flag_1 : 1;
+        bool flag_2 : 1;
+        bool flag_3 : 1;
+        bool flag_4 : 1;
+        bool flag_5 : 1;
+        bool flag_6 : 1;
+        bool flag_7 : 1;
+    };
+
     struct MeshHeader {
         uint64_t vertices_offset;
         uint64_t indices_offset;
@@ -19,7 +30,7 @@ namespace dsts::geom::binary
         uint16_t index_type;
 
         uint8_t vertex_groups_per_vertex;
-        uint8_t flags;
+        MeshFlags flags;
         PrimitiveType primitive_type;
 
         uint32_t name_hash;

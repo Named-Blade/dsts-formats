@@ -124,6 +124,15 @@ namespace dsts::geom
                     mesh.unknown_0x4C = meshHeaders[i].unknown_0x4C;
                     mesh.unknown_0x50 = meshHeaders[i].unknown_0x50;
 
+                    mesh.flag_0 = meshHeaders[i].flags.flag_0;
+                    mesh.flag_1 = meshHeaders[i].flags.flag_1;
+                    mesh.flag_2 = meshHeaders[i].flags.flag_2;
+                    mesh.flag_3 = meshHeaders[i].flags.flag_3;
+                    mesh.flag_4 = meshHeaders[i].flags.flag_4;
+                    mesh.flag_5 = meshHeaders[i].flags.flag_5;
+                    mesh.flag_6 = meshHeaders[i].flags.flag_6;
+                    mesh.flag_7 = meshHeaders[i].flags.flag_7;
+
                     mesh.name_hash = meshHeaders[i].name_hash;
                     if (mesh.name_hash != 0 && meshHeaders[i].name_offset != 0) {
                         f.seekg(base + header.strings_offset + meshHeaders[i].name_offset);
