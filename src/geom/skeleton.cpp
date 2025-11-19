@@ -438,22 +438,30 @@ namespace dsts::geom
         return out;
     }
 
-    bool transformEqual(const binary::BoneTransform& a, const binary::BoneTransform& b, float eps = 1e-4f) {
-        for (int i = 0; i < 4; ++i) {
-            if (std::fabs(a.quaternion[i] - b.quaternion[i]) > eps) {
+    bool transformEqual(const binary::BoneTransform& a,
+                        const binary::BoneTransform& b,
+                        float eps = 1e-4f)
+    {
+        // --- Quaternion comparison (q ≈ b or q ≈ -b) ---
+        float dot = 0.0f;
+        for (int i = 0; i < 4; ++i)
+            dot += a.quaternion[i] * b.quaternion[i];
+
+        // normalize dot tolerance to unit quaternions:
+        // |dot| should be close to 1 for equivalent rotations
+        if (std::fabs(1.0f - std::fabs(dot)) > eps)
+            return false;
+
+        // --- Position comparison ---
+        for (int i = 0; i < 4; ++i)
+            if (std::fabs(a.position[i] - b.position[i]) > eps)
                 return false;
-            }
-        }
-        for (int i = 0; i < 4; ++i) {
-            if (std::fabs(a.position[i] - b.position[i]) > eps) {
+
+        // --- Scale comparison ---
+        for (int i = 0; i < 4; ++i)
+            if (std::fabs(a.scale[i] - b.scale[i]) > eps)
                 return false;
-            }
-        }
-        for (int i = 0; i < 4; ++i) {
-            if (std::fabs(a.scale[i] - b.scale[i]) > eps) {
-                return false;
-            }
-        }
+
         return true;
     }
 
@@ -464,5 +472,12 @@ namespace dsts::geom
             }
         }
         return true;
+    }
+
+    void printTransform(binary::BoneTransform b) {
+        std::cout << "Transform:" << std::endl;
+        std::cout << b.quaternion[0] << " " << b.quaternion[1] << " " << b.quaternion[2] << " " << b.quaternion[3] << std::endl;
+        std::cout << b.position[0] << " " << b.position[1] << " " << b.position[2] << " " << b.position[3] << std::endl;
+        std::cout << b.scale[0] << " " << b.scale[1] << " " << b.scale[2] << " " << b.scale[3] << std::endl << std::endl;
     }
 }

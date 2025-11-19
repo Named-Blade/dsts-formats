@@ -33,7 +33,9 @@ namespace dsts::geom::binary
     };
 
     struct Ibpm {
-        float matrix[12];
+        float matrix[12] = {1, 0, 0, 0,
+                            0, 1, 0, 0,
+                            0, 0, 1, 0};
     };
 
     #pragma pack(pop)
