@@ -199,8 +199,10 @@ namespace dsts::geom
                     uint16_t i2 = indices[i + 2];
 
                     // skip degenerate triangles
-                    if (i0 == i1 || i1 == i2 || i0 == i2)
+                    if (i0 == i1 || i1 == i2 || i0 == i2){
+                        flip = !flip;
                         continue;
+                    }
 
                     if (!flip) {
                         // even tri: use natural order
@@ -215,12 +217,12 @@ namespace dsts::geom
                     } else {
                         // odd tri: flip winding
                         tris.push_back({
-                            i0,
                             i1,
+                            i0,
                             i2,
+                            vertices[i1],
                             vertices[i0],
-                            vertices[i2],
-                            vertices[i1]
+                            vertices[i2]
                         });
                     }
 
