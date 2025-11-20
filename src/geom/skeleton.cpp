@@ -23,8 +23,6 @@ namespace dsts::geom
 
             binary::BoneTransform transform;
             binary::BoneTransform transform_actual;
-
-            bool is_effect = false;
             
             std::shared_ptr<Bone> parent;
 
