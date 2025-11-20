@@ -9,7 +9,23 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(pybind11 REQUIRED)
 
+set(SHADERS_BIN ${CMAKE_CURRENT_SOURCE_DIR}/notes/shader_params.bin)
+set(SHADERS_HEADER ${CMAKE_CURRENT_BINARY_DIR}/shader_params_bin.h)
+
+add_custom_command(
+    OUTPUT ${SHADERS_HEADER}
+    COMMAND xxd -i shader_params.bin > ${SHADERS_HEADER}
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/notes
+    DEPENDS ${SHADERS_BIN}
+    COMMENT "Converting shader_params.bin to C++ header"
+    VERBATIM
+)
+
+add_custom_target(generate_shaders_header ALL DEPENDS ${SHADERS_HEADER})
+
 pybind11_add_module(dsts_formats src/python/bindings.cpp)
+add_dependencies(dsts_formats generate_shaders_header)
+target_include_directories(dsts_formats PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 # Define staging folder
 set(PACKAGE_DIR "${CMAKE_CURRENT_BINARY_DIR}/package")

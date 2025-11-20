@@ -16,6 +16,8 @@
 #include "material.cpp"
 #include "../utils/hash.cpp"
 
+#include "shader_params_bin.h"
+
 namespace dsts::geom
 {  
     class Geom {
@@ -203,6 +205,9 @@ namespace dsts::geom
 
                     meshes.push_back(mesh);
                 }
+
+                std::vector<binary::ShaderParamDef> shaderParams(binary::shaderParamNum);
+                std::memcpy(shaderParams.data(), shader_params_bin, shader_params_bin_len);
 
                 f.seekg(base + header.material_offset);
                 for (int i = 0; i < header.material_count ; i++){

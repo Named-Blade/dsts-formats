@@ -60,5 +60,13 @@ namespace dsts::geom::binary
         uint32_t unknown_0x1C;
     };
 
+    struct ShaderParamDef {
+        uint32_t id;
+        uint8_t unk[0x14];
+        char name[0x20];
+    };
+
+    constexpr uint64_t shaderParamNum = 791;
+
     #pragma pack(pop)
 }
