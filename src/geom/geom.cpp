@@ -209,6 +209,12 @@ namespace dsts::geom
                 std::vector<binary::ShaderParamDef> shaderParams(binary::shaderParamNum);
                 std::memcpy(shaderParams.data(), shader_params_bin, shader_params_bin_len);
 
+                std::unordered_map<uint16_t, std::string> id_to_param_name(binary::shaderParamNum);
+                for (int i = 0; shaderParams.size(); i++) {
+                    std::string name = shaderParams[i].name;
+                    id_to_param_name[shaderParams[i].id] = name;
+                }
+
                 f.seekg(base + header.material_offset);
                 for (int i = 0; i < header.material_count ; i++){
                     std::shared_ptr<Material> mat_ptr = std::make_shared<Material>();
