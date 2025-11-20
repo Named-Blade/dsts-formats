@@ -12,6 +12,7 @@
 #include "../utils/hash.cpp"
 #include "../utils/float16.cpp"
 #include "skeleton.cpp"
+#include "material.cpp"
 #include "binary/mesh.hpp"
 
 namespace dsts::geom
@@ -152,6 +153,8 @@ namespace dsts::geom
             PrimitiveType primitive;
 
             std::vector<std::shared_ptr<Bone>> matrix_palette;
+
+            std::shared_ptr<Material> material;
 
             bool flag_0;
             bool flag_1;

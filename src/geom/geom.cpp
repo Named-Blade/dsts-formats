@@ -34,6 +34,8 @@ namespace dsts::geom
                 f.seekg(base);
                 f.read(reinterpret_cast<char*>(&header), sizeof(binary::GeomHeader));
 
+                assert(header.version == 316);
+
                 unknown_0x10 = header.unknown_0x10;
                 unknown_0x30 = header.unknown_0x30;
                 unknown_0x34 = header.unknown_0x34;
@@ -243,6 +245,10 @@ namespace dsts::geom
                     if (it != hash_to_material_name.end()) {
                         material->name = it->second;
                     }
+                }
+
+                for (int i = 0; i < meshes.size() ; i++) {
+                    meshes[i].material = materials[meshHeaders[i].material_idx];
                 }
 
             }

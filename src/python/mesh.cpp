@@ -227,6 +227,7 @@ void bind_mesh(py::module_ &m) {
                 m.matrix_palette = std::move(bones);
             }
         )
+        .def_readwrite("material", &Mesh::material)
         .def("to_triangle_list", &Mesh::toTriangleList)
         .def("__repr__",[](const Mesh &m){ return "<Mesh :"+ m.name +">";});
 }
