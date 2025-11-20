@@ -1,10 +1,17 @@
 #pragma once
 
+#include <bit>
+#include <cstdint>
+
 #include "../utils/hash.cpp"
 #include "binary/material.hpp"
 
+#include "shader_params_bin.h"
+
 namespace dsts::geom
 {
+    constexpr auto shaderParamDefs = std::bit_cast<std::array<binary::ShaderParamDef, binary::shaderParamNum>>(shader_params_bin);
+
     class Shader {
         public:
             static constexpr std::size_t NameSize = 14;

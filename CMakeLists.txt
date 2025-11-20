@@ -9,15 +9,17 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 find_package(pybind11 REQUIRED)
 
-set(SHADERS_BIN ${CMAKE_CURRENT_SOURCE_DIR}/notes/shader_params.bin)
+set(SHADERS_BIN    ${CMAKE_CURRENT_SOURCE_DIR}/notes/shader_params.bin)
 set(SHADERS_HEADER ${CMAKE_CURRENT_BINARY_DIR}/shader_params_bin.h)
 
 add_custom_command(
     OUTPUT ${SHADERS_HEADER}
-    COMMAND xxd -i shader_params.bin > ${SHADERS_HEADER}
+    COMMAND xxd -i shader_params.bin
+            | sed "s/^unsigned/constexpr unsigned/"
+            > ${SHADERS_HEADER}
     WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/notes
     DEPENDS ${SHADERS_BIN}
-    COMMENT "Converting shader_params.bin to C++ header"
+    COMMENT "Converting shader_params.bin to constexpr C++ header"
     VERBATIM
 )
 
