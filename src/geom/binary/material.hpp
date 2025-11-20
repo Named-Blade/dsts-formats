@@ -43,7 +43,11 @@ namespace dsts::geom::binary
     };
 
     struct ShaderUniform{
-        Payload payload;
+        union {
+            Payload payload;
+            FloatPayload floats;
+            TexturePayload texture;
+        } payload;
         uint16_t parameter_id;
         uint16_t float_count;
         uint32_t unknown_0x14;
