@@ -28,5 +28,37 @@ namespace dsts::geom::binary
         uint16_t unknown_0x326;
     };
 
+    struct TexturePayload{
+        uint64_t texture_name_offset;
+        uint32_t texture_name_length;
+        uint32_t unknown_0xC;
+    };
+
+    struct FloatPayload{
+        float payload[4];
+    };
+
+    struct Payload {
+        uint8_t payload[0x10];
+    };
+
+    struct ShaderUniform{
+        Payload payload;
+        uint16_t parameter_id;
+        uint16_t float_count;
+        uint32_t unknown_0x14;
+        uint32_t unknown_0x18;
+        uint32_t unknown_0x1C;
+    };
+
+    struct ShaderSetting{
+        Payload payload;
+        uint16_t parameter_id;
+        uint16_t unknown_0x12;
+        uint32_t unknown_0x14;
+        uint32_t unknown_0x18;
+        uint32_t unknown_0x1C;
+    };
+
     #pragma pack(pop)
 }

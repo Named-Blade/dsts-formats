@@ -223,8 +223,11 @@ namespace dsts::geom
                         std::copy(std::begin(materialHeader.shaders[y].name_data), std::end(materialHeader.shaders[y].name_data), material.shaders[y].name_data.begin());
                     }
 
-                    //placeholder fow now
-                    f.seekg((uint64_t)f.tellg() + (materialHeader.uniform_count * 0x20) + (materialHeader.setting_count * 0x20));
+                    std::vector<binary::ShaderUniform> shaderUniforms(materialHeader.uniform_count);
+                    std::vector<binary::ShaderSetting> shaderSettings(materialHeader.setting_count);
+
+                    f.read(reinterpret_cast<char*>(shaderUniforms.data()), sizeof(binary::ShaderUniform) * materialHeader.uniform_count);
+                    f.read(reinterpret_cast<char*>(shaderSettings.data()), sizeof(binary::ShaderSetting) * materialHeader.setting_count);
 
                     materials.push_back(std::move(mat_ptr));
                 }
