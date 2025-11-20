@@ -26,12 +26,42 @@ namespace dsts::geom
             }
 
             void setShaderName(const std::string& encodedName) {
+                static const std::string alphabet = "0123456789abcdefghijklmnopqrstuvwxyz#$[]{}+@=&";
+
+                // Remove underscores
                 std::string cleanName = encodedName;
                 cleanName.erase(std::remove(cleanName.begin(), cleanName.end(), '_'), cleanName.end());
 
+                // Check length
+                if (cleanName.length() != NameSize * 6) {
+                    throw std::runtime_error("Encoded name has invalid length");
+                }
+
+                // Check allowed characters
+                for (char c : cleanName) {
+                    if (alphabet.find(c) == std::string::npos) {
+                        throw std::runtime_error(std::string("Invalid character in encoded name: ") + c);
+                    }
+                }
+
+                // Decode segments
                 for (std::size_t i = 0; i < NameSize; ++i) {
                     std::string segment = cleanName.substr(i * 6, 6);
-                    name_data[i] = decode(segment);
+
+                    // Decode to uint64_t first to safely check overflow
+                    uint64_t value = 0;
+                    for (char c : segment) {
+                        value *= 46;
+                        size_t index = alphabet.find(c);
+                        value += static_cast<uint64_t>(index);
+                    }
+
+                    // Check if it fits in uint32_t
+                    if (value > static_cast<uint64_t>(std::numeric_limits<uint32_t>::max())) {
+                        throw std::runtime_error("Segment value exceeds uint32_t range");
+                    }
+
+                    name_data[i] = static_cast<uint32_t>(value);
                 }
             }
 
