@@ -10,12 +10,12 @@ using namespace dsts::geom::binary;
 void bind_material(py::module_ &m) {
     //Shader
     py::class_<dsts::geom::Shader>(m, "Shader")
-        .def(py::init<>())
         .def_property(
             "name",
             &dsts::geom::Shader::getShaderName,
             &dsts::geom::Shader::setShaderName
-        );
+        )
+        .def("__repr__",[](const dsts::geom::Shader &s){ return "<Shader :" + s.getShaderName() + ">";});
 
 
     // Material
@@ -27,6 +27,6 @@ void bind_material(py::module_ &m) {
             &Material::setName
         )
         .def_readonly("name_hash", &Material::name_hash)
-        .def_readwrite("shaders", &Material::shaders)
+        .def_readonly("shaders", &Material::shaders)
         .def("__repr__", [](const Material &m){ return "<Material :" + m.name + ">";});
 }
