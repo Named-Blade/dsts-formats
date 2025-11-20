@@ -231,6 +231,24 @@ namespace dsts::geom
                     f.read(reinterpret_cast<char*>(shaderUniforms.data()), sizeof(binary::ShaderUniform) * materialHeader.uniform_count);
                     f.read(reinterpret_cast<char*>(shaderSettings.data()), sizeof(binary::ShaderSetting) * materialHeader.setting_count);
 
+                    for (const auto &uniform_bin : shaderUniforms) {
+                        ShaderUniform uniform;
+
+                        uniform.parameter_id = uniform_bin.parameter_id;
+                        uniform.parameter_name = shaderParamMap.at(uniform.parameter_id);
+
+                        material.uniforms.push_back(uniform);
+                    }
+
+                    for (const auto &setting_bin : shaderSettings) {
+                        ShaderSetting setting;
+
+                        setting.parameter_id = setting_bin.parameter_id;
+                        setting.parameter_name = shaderParamMap.at(setting.parameter_id);
+
+                        material.settings.push_back(setting);
+                    }
+
                     materials.push_back(std::move(mat_ptr));
                 }
 

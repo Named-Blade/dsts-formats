@@ -2,6 +2,7 @@
 
 #include <bit>
 #include <cstdint>
+#include <variant>
 
 #include "../utils/hash.cpp"
 #include "binary/material.hpp"
@@ -11,6 +12,77 @@
 namespace dsts::geom
 {
     constexpr auto shaderParamDefs = std::bit_cast<std::array<binary::ShaderParamDef, binary::shaderParamNum>>(shader_params_bin);
+    static const std::unordered_map<uint32_t, std::string_view> shaderParamMap = [] {
+        std::unordered_map<uint32_t, std::string_view> m;
+        m.reserve(shaderParamDefs.size());
+        for (auto &p : shaderParamDefs)
+            m.emplace(p.id, p.name);
+        return m;
+    }();
+
+    class ShaderUniform {
+        public:
+            std::string parameter_name;
+            uint16_t parameter_id = 0;
+
+            ShaderUniform() = default;
+
+            const std::string& getParameterName() const { return parameter_name; }
+            uint16_t getParameterId() const { return parameter_id; }
+
+            void setParameterId(uint16_t id) {
+                auto it = shaderParamMap.find(id);
+                if (it == shaderParamMap.end()) {
+                    throw std::runtime_error("Invalid parameter_id: no matching name");
+                }
+                parameter_id = id;
+                parameter_name = std::string(it->second);
+            }
+
+            void setParameterName(const std::string& name) {
+                auto it = std::find_if(
+                    shaderParamMap.begin(), shaderParamMap.end(),
+                    [&](auto& p){ return p.second == name; });
+
+                if (it == shaderParamMap.end()) {
+                    throw std::runtime_error("Invalid parameter_name: no matching id");
+                }
+                parameter_name = name;
+                parameter_id = it->first;
+            } 
+    };
+
+    class ShaderSetting {
+        public:
+            std::string parameter_name;
+            uint16_t parameter_id = 0;
+
+            ShaderSetting() = default;
+
+            const std::string& getParameterName() const { return parameter_name; }
+            uint16_t getParameterId() const { return parameter_id; }
+
+            void setParameterId(uint16_t id) {
+                auto it = shaderParamMap.find(id);
+                if (it == shaderParamMap.end()) {
+                    throw std::runtime_error("Invalid parameter_id: no matching name");
+                }
+                parameter_id = id;
+                parameter_name = std::string(it->second);
+            }
+
+            void setParameterName(const std::string& name) {
+                auto it = std::find_if(
+                    shaderParamMap.begin(), shaderParamMap.end(),
+                    [&](auto& p){ return p.second == name; });
+
+                if (it == shaderParamMap.end()) {
+                    throw std::runtime_error("Invalid parameter_name: no matching id");
+                }
+                parameter_name = name;
+                parameter_id = it->first;
+            } 
+    };
 
     class Shader {
         public:
@@ -129,6 +201,8 @@ namespace dsts::geom
             std::string name;
 
             std::array<Shader, 14> shaders;
+            std::vector<ShaderUniform> uniforms;
+            std::vector<ShaderSetting> settings;
 
             void setName(std::string newName){
                 name = newName;
