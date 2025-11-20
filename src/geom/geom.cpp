@@ -177,6 +177,20 @@ namespace dsts::geom
                         }
                     }
 
+                    if (meshHeaders[i].vertex_groups_per_vertex == 0) {
+                        for (auto &v : mesh.vertices) {
+                            v.index.data  = std::vector<uint8_t>{0};
+                            v.weight.data = std::vector<float16>{(float16)1.0};
+                        }   
+                    }
+                    else if (meshHeaders[i].vertex_groups_per_vertex == 1) {
+                        for (auto &v : mesh.vertices) {
+                            auto pos = std::get<std::vector<float>>(v.position.data);
+                            v.index.data  = std::vector<uint8_t>{(uint8_t)pos[3]};
+                            v.weight.data = std::vector<float16>{(float16)1.0};
+                        }   
+                    }
+
                     mesh.indices.resize(meshHeaders[i].index_count);
                     f.seekg(base + meshHeaders[i].indices_offset);
                     f.read(reinterpret_cast<char*>(mesh.indices.data()), sizeof(uint16_t) * meshHeaders[i].index_count);
