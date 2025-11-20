@@ -8,11 +8,11 @@ using namespace dsts::geom;
 using namespace dsts::geom::binary;
 
 PYBIND11_MAKE_OPAQUE(std::vector<Mesh>)
-PYBIND11_MAKE_OPAQUE(std::vector<Material>)
+PYBIND11_MAKE_OPAQUE(std::vector<std::shared_ptr<Material>>)
 
 void bind_geom(py::module_ &m) {
     py::bind_vector<std::vector<Mesh>>(m, "MeshList");
-    py::bind_vector<std::vector<Material>>(m, "MaterialList");
+    py::bind_vector<std::vector<std::shared_ptr<Material>>>(m, "MaterialList");
 
     py::class_<Geom>(m, "Geom")
         .def(py::init<>())
@@ -40,13 +40,13 @@ void bind_geom(py::module_ &m) {
                 return &g.materials;
             },
             [](Geom &g, py::object obj) {
-                if (py::isinstance<std::vector<Material>>(obj)) {
-                    g.materials = obj.cast<std::vector<Material>>();
+                if (py::isinstance<std::vector<std::shared_ptr<Material>>>(obj)) {
+                    g.materials = obj.cast<std::vector<std::shared_ptr<Material>>>();
                     return;
                 }
-                std::vector<Material> materials;
+                std::vector<std::shared_ptr<Material>> materials;
                 for (auto item : obj) {
-                    materials.push_back(py::cast<Material>(item));
+                    materials.push_back(py::cast<std::shared_ptr<Material>>(item));
                 }
                 g.materials = std::move(materials);
             }

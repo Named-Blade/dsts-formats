@@ -26,7 +26,7 @@ namespace dsts::geom
 
             Skeleton skeleton;
             std::vector<Mesh> meshes;
-            std::vector<Material> materials;
+            std::vector<std::shared_ptr<Material>> materials;
 
             void read(std::istream& f, int base = 0){
                 binary::GeomHeader header;
@@ -204,7 +204,8 @@ namespace dsts::geom
 
                 f.seekg(base + header.material_offset);
                 for (int i = 0; i < header.material_count ; i++){
-                    Material material;
+                    std::shared_ptr<Material> mat_ptr = std::make_shared<Material>();
+                    Material &material = *mat_ptr.get();
 
                     binary::MaterialHeader materialHeader;
                     f.read(reinterpret_cast<char*>(&materialHeader), sizeof(materialHeader));
@@ -225,7 +226,7 @@ namespace dsts::geom
                     //placeholder fow now
                     f.seekg((uint64_t)f.tellg() + (materialHeader.uniform_count * 0x20) + (materialHeader.setting_count * 0x20));
 
-                    materials.push_back(material);
+                    materials.push_back(std::move(mat_ptr));
                 }
 
                 std::unordered_map<uint32_t, std::string> hash_to_material_name;
@@ -235,9 +236,9 @@ namespace dsts::geom
                 }
 
                 for (auto& material : materials) {
-                    auto it = hash_to_material_name.find(material.name_hash);
+                    auto it = hash_to_material_name.find(material->name_hash);
                     if (it != hash_to_material_name.end()) {
-                        material.name = it->second;
+                        material->name = it->second;
                     }
                 }
 
