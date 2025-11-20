@@ -8,9 +8,11 @@ using namespace dsts::geom;
 using namespace dsts::geom::binary;
 
 PYBIND11_MAKE_OPAQUE(std::vector<Mesh>)
+PYBIND11_MAKE_OPAQUE(std::vector<Material>)
 
 void bind_geom(py::module_ &m) {
     py::bind_vector<std::vector<Mesh>>(m, "MeshList");
+    py::bind_vector<std::vector<Material>>(m, "MaterialList");
 
     py::class_<Geom>(m, "Geom")
         .def(py::init<>())
@@ -30,6 +32,23 @@ void bind_geom(py::module_ &m) {
                     meshes.push_back(py::cast<Mesh>(item));
                 }
                 g.meshes = std::move(meshes);
+            }
+        )
+        .def_property(
+            "materials",
+            [](const Geom &g) {
+                return &g.materials;
+            },
+            [](Geom &g, py::object obj) {
+                if (py::isinstance<std::vector<Material>>(obj)) {
+                    g.materials = obj.cast<std::vector<Material>>();
+                    return;
+                }
+                std::vector<Material> materials;
+                for (auto item : obj) {
+                    materials.push_back(py::cast<Material>(item));
+                }
+                g.materials = std::move(materials);
             }
         )
         .def_static("from_bytes", [](py::bytes data, int base){

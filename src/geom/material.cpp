@@ -82,6 +82,12 @@ namespace dsts::geom
 
     class Material {
         public:
+            uint32_t unknown_0x314;
+            uint32_t unknown_0x318;
+            uint32_t unknown_0x31c;
+            uint16_t unknown_0x324;
+            uint16_t unknown_0x326;
+
             uint32_t name_hash;
             std::string name;
 

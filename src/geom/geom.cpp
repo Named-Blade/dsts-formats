@@ -210,6 +210,12 @@ namespace dsts::geom
                     f.read(reinterpret_cast<char*>(&materialHeader), sizeof(materialHeader));
 
                     material.name_hash = materialHeader.name_hash;
+
+                    material.unknown_0x314 = materialHeader.unknown_0x314;
+                    material.unknown_0x318 = materialHeader.unknown_0x318;
+                    material.unknown_0x31c = materialHeader.unknown_0x31c;
+                    material.unknown_0x324 = materialHeader.unknown_0x324;
+                    material.unknown_0x326 = materialHeader.unknown_0x326;
                     
 
                     for (int y = 0; y < 14; y++) {
