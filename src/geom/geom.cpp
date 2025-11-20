@@ -237,6 +237,10 @@ namespace dsts::geom
                         uniform.parameter_id = uniform_bin.parameter_id;
                         uniform.parameter_name = shaderParamMap.at(uniform.parameter_id);
 
+                        uniform.unknown_0x14 = uniform_bin.unknown_0x14;
+                        uniform.unknown_0x18 = uniform_bin.unknown_0x18;
+                        uniform.unknown_0x1C = uniform_bin.unknown_0x1C;
+
                         material.uniforms.push_back(uniform);
                     }
 
@@ -245,6 +249,13 @@ namespace dsts::geom
 
                         setting.parameter_id = setting_bin.parameter_id;
                         setting.parameter_name = shaderParamMap.at(setting.parameter_id);
+
+                        setting.payload = setting_bin.payload;
+
+                        setting.unknown_0x12 = setting_bin.unknown_0x12;
+                        setting.unknown_0x14 = setting_bin.unknown_0x14;
+                        setting.unknown_0x18 = setting_bin.unknown_0x18;
+                        setting.unknown_0x1C = setting_bin.unknown_0x1C;
 
                         material.settings.push_back(setting);
                     }

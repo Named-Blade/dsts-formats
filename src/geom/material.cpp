@@ -25,6 +25,11 @@ namespace dsts::geom
             std::string parameter_name;
             uint16_t parameter_id = 0;
 
+            //unks
+            uint32_t unknown_0x14;
+            uint32_t unknown_0x18;
+            uint32_t unknown_0x1C;
+
             ShaderUniform() = default;
 
             const std::string& getParameterName() const { return parameter_name; }
@@ -56,6 +61,13 @@ namespace dsts::geom
         public:
             std::string parameter_name;
             uint16_t parameter_id = 0;
+
+            //unks
+            binary::Payload payload;
+            uint16_t unknown_0x12;
+            uint32_t unknown_0x14;
+            uint32_t unknown_0x18;
+            uint32_t unknown_0x1C;
 
             ShaderSetting() = default;
 
