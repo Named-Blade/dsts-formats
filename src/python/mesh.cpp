@@ -178,54 +178,18 @@ void bind_mesh(py::module_ &m) {
         .def_readwrite("flag_7", &Mesh::flag_7)
         .def_property(
             "vertices",
-            [](const Mesh &m) {
-                return &m.vertices;
-            },
-            [](Mesh &m, py::object obj) {
-                if (py::isinstance<std::vector<Vertex>>(obj)) {
-                    m.vertices = obj.cast<std::vector<Vertex>>();
-                    return;
-                }
-                std::vector<Vertex> verts;
-                for (auto item : obj) {
-                    verts.push_back(py::cast<Vertex>(item));
-                }
-                m.vertices = std::move(verts);
-            }
+            make_vector_property(&Mesh::vertices).first,
+            make_vector_property(&Mesh::vertices).second
         )
         .def_property(
             "indices",
-            [](const Mesh &m) {
-                return &m.indices;
-            },
-            [](Mesh &m, py::object obj) {
-                if (py::isinstance<std::vector<uint16_t>>(obj)) {
-                    m.indices = obj.cast<std::vector<uint16_t>>();
-                    return;
-                }
-                std::vector<uint16_t> indices;
-                for (auto item : obj) {
-                    indices.push_back(py::cast<uint16_t>(item));
-                }
-                m.indices = std::move(indices);
-            }
+            make_vector_property(&Mesh::indices).first,
+            make_vector_property(&Mesh::indices).second
         )
         .def_property(
             "matrix_palette",
-            [](const Mesh &m) {
-                return &m.matrix_palette;
-            },
-            [](Mesh &m, py::object obj) {
-                if (py::isinstance<std::vector<std::shared_ptr<Bone>>>(obj)) {
-                    m.matrix_palette = obj.cast<std::vector<std::shared_ptr<Bone>>>();
-                    return;
-                }
-                std::vector<std::shared_ptr<Bone>> bones;
-                for (auto item : obj) {
-                    bones.push_back(py::cast<std::shared_ptr<Bone>>(item));
-                }
-                m.matrix_palette = std::move(bones);
-            }
+            make_vector_property(&Mesh::matrix_palette).first,
+            make_vector_property(&Mesh::matrix_palette).second
         )
         .def_readwrite("material", &Mesh::material)
         .def("to_triangle_list", &Mesh::toTriangleList)

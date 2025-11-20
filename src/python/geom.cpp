@@ -19,37 +19,13 @@ void bind_geom(py::module_ &m) {
         .def_readwrite("skeleton", &Geom::skeleton)
         .def_property(
             "meshes",
-            [](const Geom &g) {
-                return &g.meshes;
-            },
-            [](Geom &g, py::object obj) {
-                if (py::isinstance<std::vector<Mesh>>(obj)) {
-                    g.meshes = obj.cast<std::vector<Mesh>>();
-                    return;
-                }
-                std::vector<Mesh> meshes;
-                for (auto item : obj) {
-                    meshes.push_back(py::cast<Mesh>(item));
-                }
-                g.meshes = std::move(meshes);
-            }
+            make_vector_property(&Geom::meshes).first,
+            make_vector_property(&Geom::meshes).second
         )
         .def_property(
             "materials",
-            [](const Geom &g) {
-                return &g.materials;
-            },
-            [](Geom &g, py::object obj) {
-                if (py::isinstance<std::vector<std::shared_ptr<Material>>>(obj)) {
-                    g.materials = obj.cast<std::vector<std::shared_ptr<Material>>>();
-                    return;
-                }
-                std::vector<std::shared_ptr<Material>> materials;
-                for (auto item : obj) {
-                    materials.push_back(py::cast<std::shared_ptr<Material>>(item));
-                }
-                g.materials = std::move(materials);
-            }
+            make_vector_property(&Geom::materials).first,
+            make_vector_property(&Geom::materials).second
         )
         .def_static("from_bytes", [](py::bytes data, int base){
             Geom geom;

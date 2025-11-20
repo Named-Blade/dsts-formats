@@ -55,7 +55,15 @@ void bind_material(py::module_ &m) {
         )
         .def_readonly("name_hash", &Material::name_hash)
         .def_readonly("shaders", &Material::shaders)
-        .def_readwrite("uniforms", &Material::uniforms)
-        .def_readwrite("settings", &Material::settings)
+        .def_property(
+            "uniforms",
+            make_vector_property(&Material::uniforms).first,
+            make_vector_property(&Material::uniforms).second
+        )
+        .def_property(
+            "settings",
+            make_vector_property(&Material::settings).first,
+            make_vector_property(&Material::settings).second
+        )
         .def("__repr__", [](const Material &m){ return "<Material :" + m.name + ">";});
 }
