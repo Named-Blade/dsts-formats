@@ -250,10 +250,9 @@ namespace dsts::geom
 
                         if (uniform_bin.float_count > 0) {
 
-                            std::vector<float> vec;
-                            vec.resize(uniform_bin.float_count);
+                            std::vector<float> vec(uniform_bin.float_count);
                             for (int y = 0; y < uniform_bin.float_count ; y++){
-                                vec.push_back(uniform_bin.payload.floats.payload[y]);
+                                vec[y]=(uniform_bin.payload.floats.floats[y]);
                             }
                             uniform.value = vec;
                             

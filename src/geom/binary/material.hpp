@@ -35,7 +35,7 @@ namespace dsts::geom::binary
     };
 
     struct FloatPayload{
-        float payload[4];
+        float floats[4];
     };
 
     struct Payload {
