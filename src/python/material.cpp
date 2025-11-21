@@ -29,6 +29,58 @@ void bind_material(py::module_ &m) {
         .def_property("parameter_name",
             &dsts::geom::ShaderUniform::getParameterName,
             &dsts::geom::ShaderUniform::setParameterName)
+        .def_property_readonly("uniform_type",
+            [](const dsts::geom::ShaderUniform &u) {
+                return std::visit([](auto &&arg) -> std::string {
+                    using T = std::decay_t<decltype(arg)>;
+                    if constexpr (std::is_same_v<T, std::string>)
+                        return "texture";
+                    else
+                        return "float";
+                }, u.value);
+            })
+        .def_property("value",
+            [](dsts::geom::ShaderUniform &u) -> py::object {
+                return std::visit([&](auto &arg) -> py::object {
+                    using T = std::decay_t<decltype(arg)>;
+
+                    if constexpr (std::is_same_v<T, std::string>) {
+                        return py::cast(arg);
+                    } else {
+                        // FLOAT VECTOR → RETURN WRITABLE NUMPY VIEW
+
+                        auto *vec_ptr = &arg; // std::vector<float>*
+
+                        // Capsule ensures lifetime is tied to the C++ object
+                        py::capsule base(vec_ptr, [](void*) {
+                            // no deletion; C++ owns the vector
+                        });
+
+                        return py::array(
+                            py::buffer_info(
+                                vec_ptr->data(),                 // pointer
+                                sizeof(float),                   // itemsize
+                                py::format_descriptor<float>::format(), // format
+                                1,                               // ndim
+                                { vec_ptr->size() },             // shape
+                                { sizeof(float) }                // stride
+                            ),
+                            base // capsule managing lifetime
+                        );
+                    }
+                }, u.value);
+            },
+
+            [](dsts::geom::ShaderUniform &u, py::object obj) {
+                // SETTER
+                if (py::isinstance<py::str>(obj)) {
+                    u.value = obj.cast<std::string>();
+                } else {
+                    // Convert any sequence-like object into a vector<float>
+                    std::vector<float> vals = obj.cast<std::vector<float>>();
+                    u.value = std::move(vals);
+                }
+            })
         .def("__repr__", [](const dsts::geom::ShaderUniform &u){return "<Uniform :" + u.parameter_name + ">";});
 
     //Setting
