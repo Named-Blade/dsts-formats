@@ -58,6 +58,16 @@ namespace dsts::geom
                 parameter_name = name;
                 parameter_id = it->first;
             } 
+
+            std::string uniformType() {
+                return std::visit([](auto &&arg) -> std::string {
+                    using T = std::decay_t<decltype(arg)>;
+                    if constexpr (std::is_same_v<T, std::string>)
+                        return "texture";
+                    else
+                        return "float";
+                }, value);
+            }
     };
 
     class ShaderSetting {
@@ -208,7 +218,7 @@ namespace dsts::geom
         public:
             uint32_t unknown_0x314;
             uint32_t unknown_0x318;
-            uint32_t unknown_0x31c;
+            uint32_t unknown_0x31C;
             uint16_t unknown_0x324;
             uint16_t unknown_0x326;
 

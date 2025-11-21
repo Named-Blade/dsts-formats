@@ -29,16 +29,7 @@ void bind_material(py::module_ &m) {
         .def_property("parameter_name",
             &dsts::geom::ShaderUniform::getParameterName,
             &dsts::geom::ShaderUniform::setParameterName)
-        .def_property_readonly("uniform_type",
-            [](const dsts::geom::ShaderUniform &u) {
-                return std::visit([](auto &&arg) -> std::string {
-                    using T = std::decay_t<decltype(arg)>;
-                    if constexpr (std::is_same_v<T, std::string>)
-                        return "texture";
-                    else
-                        return "float";
-                }, u.value);
-            })
+        .def_property_readonly("uniform_type", &dsts::geom::ShaderUniform::uniformType)
         .def_property("value",
             [](dsts::geom::ShaderUniform &u) -> py::object {
                 return std::visit([&](auto &arg) -> py::object {

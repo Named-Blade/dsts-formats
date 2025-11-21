@@ -245,10 +245,9 @@ namespace dsts::geom
 
                     material.unknown_0x314 = materialHeader.unknown_0x314;
                     material.unknown_0x318 = materialHeader.unknown_0x318;
-                    material.unknown_0x31c = materialHeader.unknown_0x31c;
+                    material.unknown_0x31C = materialHeader.unknown_0x31C;
                     material.unknown_0x324 = materialHeader.unknown_0x324;
                     material.unknown_0x326 = materialHeader.unknown_0x326;
-                    
 
                     for (int y = 0; y < 14; y++) {
                         std::copy(std::begin(materialHeader.shaders[y].name_data), std::end(materialHeader.shaders[y].name_data), material.shaders[y].name_data.begin());
@@ -360,7 +359,8 @@ namespace dsts::geom
                 header.name_table_offset = nameTableBase;
                 std::vector<uint64_t> bone_name_offsets(skeleton.bones.size());
                 std::vector<uint64_t> material_name_offsets(materials.size());
-                std::string stringSection{"\0"};
+                std::string stringSection{};
+                stringSection += '\0';
 
                 nameTable.bone_name_count = skeleton.bones.size();
                 nameTable.material_name_count = materials.size();
@@ -394,13 +394,64 @@ namespace dsts::geom
                 for (int i = 0; i < materials.size(); i++) {
                     binary::MaterialHeader materialHeader{};
 
-                    //logic go here
+                    materialHeader.name_hash = materials[i]->name_hash;
+                    material_name_offsets[i] = stringSection.size();
+                    stringSection += materials[i]->name;
+                    stringSection += '\0';
+
+                    materialHeader.uniform_count = materials[i]->uniforms.size();
+                    materialHeader.setting_count = materials[i]->settings.size();
+
+                    materialHeader.unknown_0x314 = materials[i]->unknown_0x314;
+                    materialHeader.unknown_0x318 = materials[i]->unknown_0x318;
+                    materialHeader.unknown_0x31C = materials[i]->unknown_0x31C;
+                    materialHeader.unknown_0x324 = materials[i]->unknown_0x324;
+                    materialHeader.unknown_0x326 = materials[i]->unknown_0x326;
+
+                    for (int y = 0; y < 14; y++) {
+                        std::copy(
+                            std::begin(materials[i]->shaders[y].name_data),
+                            std::end(materials[i]->shaders[y].name_data),
+                            std::begin(materialHeader.shaders[y].name_data)
+                        );
+                    }
 
                     std::vector<binary::ShaderUniform> uniforms(materials[i]->uniforms.size());
                     for (int y = 0; y < materials[i]->uniforms.size(); y++) {
                         binary::ShaderUniform uniform{};
 
-                        //logic go here
+                        if (materials[i]->uniforms[y].uniformType() == "float") {
+                            binary::FloatPayload payload;
+                            auto value = std::get<std::vector<float>>(materials[i]->uniforms[y].value);
+
+                            std::copy(
+                                value.begin(),
+                                value.end(),
+                                payload.floats
+                            );
+
+                            uniform.float_count = value.size();
+                            uniform.payload.floats = payload;
+                        } else {
+                            auto value = std::get<std::string>(materials[i]->uniforms[y].value);
+                            binary::TexturePayload payload;
+
+                            payload.texture_name_offset = stringSection.size();
+                            payload.texture_name_length = value.size();
+                            payload.unknown_0xC = materials[i]->uniforms[y].unknown_0xC;
+
+                            stringSection += value;
+                            stringSection += '\0';
+
+                            uniform.float_count = 0;
+                            uniform.payload.texture = payload;
+                        }
+
+                        uniform.parameter_id = materials[i]->uniforms[y].parameter_id;
+
+                        uniform.unknown_0x14 = materials[i]->uniforms[y].unknown_0x14;
+                        uniform.unknown_0x18 = materials[i]->uniforms[y].unknown_0x18;
+                        uniform.unknown_0x1C = materials[i]->uniforms[y].unknown_0x1C;
 
                         uniforms[y] = uniform;
                     }
@@ -410,7 +461,13 @@ namespace dsts::geom
                     for (int y = 0; y < materials[i]->settings.size(); y++) {
                         binary::ShaderSetting setting{};
 
-                        //logic go here
+                        setting.payload = materials[i]->settings[y].payload;
+                        setting.parameter_id = materials[i]->settings[y].parameter_id;
+
+                        setting.unknown_0x12 = materials[i]->settings[y].unknown_0x12;
+                        setting.unknown_0x14 = materials[i]->settings[y].unknown_0x14;
+                        setting.unknown_0x18 = materials[i]->settings[y].unknown_0x18;
+                        setting.unknown_0x1C = materials[i]->settings[y].unknown_0x1C;
 
                         settings[y] = setting;
                     }
