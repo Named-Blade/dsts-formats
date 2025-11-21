@@ -124,6 +124,8 @@ namespace dsts::geom
                     mesh.unknown_0x4C = meshHeaders[i].unknown_0x4C;
                     mesh.unknown_0x50 = meshHeaders[i].unknown_0x50;
 
+                    mesh.primitive = meshHeaders[i].primitive_type;
+
                     mesh.flag_0 = meshHeaders[i].flags.flag_0;
                     mesh.flag_1 = meshHeaders[i].flags.flag_1;
                     mesh.flag_2 = meshHeaders[i].flags.flag_2;
@@ -392,6 +394,16 @@ namespace dsts::geom
                     meshHeader.name_offset = stringSection.add(mesh.name);
 
                     meshHeader.material_idx = getIndex(materials, mesh.material);
+                    meshHeader.primitive_type = mesh.primitive;
+
+                    meshHeader.flags.flag_0 = mesh.flag_0;
+                    meshHeader.flags.flag_1 = mesh.flag_1;
+                    meshHeader.flags.flag_2 = mesh.flag_2;
+                    meshHeader.flags.flag_3 = mesh.flag_3;
+                    meshHeader.flags.flag_4 = mesh.flag_4;
+                    meshHeader.flags.flag_5 = mesh.flag_5;
+                    meshHeader.flags.flag_6 = mesh.flag_6;
+                    meshHeader.flags.flag_7 = mesh.flag_7;
 
                     meshHeader.unknown_0x18 = mesh.unknown_0x18;
                     meshHeader.unknown_0x4C = mesh.unknown_0x4C;
@@ -399,6 +411,11 @@ namespace dsts::geom
 
                     auto attrData = buildMeshAttributes(mesh.vertices);
                     meshHeader.bytes_per_vertex = attrData.totalSizeBytes;
+
+                    auto weightPtr = getAttributeByAtype(attrData.attributes, binary::Atype::Weight);
+                    assert(weightPtr!= nullptr);
+                    auto weight = *weightPtr;
+                    meshHeader.vertex_groups_per_vertex = weight.count;
 
                     meshHeader.vertices_offset = meshDataBase + meshDataSize;
                     meshHeader.vertex_count = mesh.vertices.size();

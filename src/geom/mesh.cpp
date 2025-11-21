@@ -450,8 +450,8 @@ namespace dsts::geom
             }, data);
         };
 
-        auto align8 = [](size_t x) {
-            return (x + 7) & ~size_t(7);
+        auto align4 = [](size_t x) {
+            return (x + 3) & ~size_t(3);
         };
 
         for (binary::Atype at : ordered) {
@@ -464,8 +464,8 @@ namespace dsts::geom
             desc.count = std::visit([&getCount](auto&& vec){ return getCount(vec); }, attr->data);
             desc.dtype = deduceDtype(attr->data);
 
-            // *** New: ensure 8-byte alignment ***
-            offset = align8(offset);
+            // *** New: ensure 4-byte alignment ***
+            offset = align4(offset);
 
             desc.offset = static_cast<uint16_t>(offset);
             out.attributes.push_back(desc);
@@ -473,7 +473,7 @@ namespace dsts::geom
             offset += desc.count * elementSize(desc.dtype);
         }
 
-        offset = align8(offset);
+        offset = align4(offset);
         out.totalSizeBytes = static_cast<uint32_t>(offset);
 
         return out;
@@ -509,5 +509,14 @@ namespace dsts::geom
         }
 
         return buffer;
+    }
+
+    binary::MeshAttribute* getAttributeByAtype(std::vector<binary::MeshAttribute> &attr, binary::Atype type) {
+        for (binary::MeshAttribute &a : attr) {
+            if (a.atype == type) {
+                return &a;
+            }
+        }
+        return nullptr;
     }
 }
