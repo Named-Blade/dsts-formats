@@ -378,6 +378,11 @@ namespace dsts::geom
                 header.mesh_offset = meshesBase;
 
                 std::vector<std::array<float, 3>> pos_all;
+                size_t totalVertexCount = 0;
+                for (const auto& mesh : meshes) {
+                    totalVertexCount += mesh.vertices.size();
+                }
+                pos_all.reserve(totalVertexCount);
 
                 for (int i = 0; i < meshes.size(); i++) {
                     auto mesh = meshes[i];
@@ -419,9 +424,35 @@ namespace dsts::geom
                     meshHeader.attribute_count = attrData.attributes.size();
                     meshDataSize += sizeof(binary::MeshAttribute) * attrData.attributes.size();
                     attributes[i] = attrData.attributes;
+
+                    std::vector<std::array<float, 3>> pos;
+                    pos.reserve(mesh.vertices.size());
+                    for (const auto& vertex : mesh.vertices) {
+                        const auto& floats = std::get<std::vector<float>>(vertex.position.data);
+                        pos.emplace_back(std::array<float, 3>{floats[0], floats[1], floats[2]});
+                        pos_all.emplace_back(std::array<float, 3>{floats[0], floats[1], floats[2]});
+                    }
+                    BoundingInfo info = calculateBoundingInfo<float>(pos);
+
+                    meshHeader.bounding_sphere_radius = info.bounding_sphere_radius;
+                    meshHeader.bbox[0] = info.bbox[0];
+                    meshHeader.bbox[1] = info.bbox[1];
+                    meshHeader.bbox[2] = info.bbox[2];
+                    meshHeader.centre[0] = info.centre[0];
+                    meshHeader.centre[1] = info.centre[1];
+                    meshHeader.centre[2] = info.centre[2];
                     
                     meshHeaders[i] = meshHeader;
                 }
+
+                BoundingInfo info = calculateBoundingInfo<float>(pos_all);
+                header.bbox[0] = info.bbox[0];
+                header.bbox[1] = info.bbox[1];
+                header.bbox[2] = info.bbox[2];
+                header.centre[0] = info.centre[0];
+                header.centre[1] = info.centre[1];
+                header.centre[2] = info.centre[2];
+
 
                 std::vector<binary::MaterialHeader> materialHeaders(materials.size());
                 std::vector<std::vector<binary::ShaderUniform>> materialUniforms(materials.size());
