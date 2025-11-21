@@ -8,6 +8,7 @@
 #include <memory>
 #include <algorithm>
 #include <cmath>
+#include <optional>
 
 #include "../utils/hash.cpp"
 #include "../utils/float16.cpp"
@@ -511,12 +512,23 @@ namespace dsts::geom
         return buffer;
     }
 
-    binary::MeshAttribute* getAttributeByAtype(std::vector<binary::MeshAttribute> &attr, binary::Atype type) {
+    std::optional<std::reference_wrapper<binary::MeshAttribute>>
+    getAttributeByAtype(std::vector<binary::MeshAttribute> &attr, binary::Atype type) {
         for (binary::MeshAttribute &a : attr) {
             if (a.atype == type) {
-                return &a;
+                return a;
             }
         }
-        return nullptr;
+        return std::nullopt;
+    }
+
+    bool deleteAttributeByAtype(std::vector<binary::MeshAttribute> &attr, binary::Atype type) {
+        for (auto it = attr.begin(); it != attr.end(); ++it) {
+            if (it->atype == type) {
+                attr.erase(it);
+                return true;
+            }
+        }
+        return false;
     }
 }

@@ -410,12 +410,40 @@ namespace dsts::geom
                     meshHeader.unknown_0x50 = mesh.unknown_0x50;
 
                     auto attrData = buildMeshAttributes(mesh.vertices);
-                    meshHeader.bytes_per_vertex = attrData.totalSizeBytes;
 
-                    auto weightPtr = getAttributeByAtype(attrData.attributes, binary::Atype::Weight);
-                    assert(weightPtr!= nullptr);
-                    auto weight = *weightPtr;
-                    meshHeader.vertex_groups_per_vertex = weight.count;
+                    {
+                        auto weightOpt = getAttributeByAtype(attrData.attributes, binary::Atype::Weight);
+                        assert(weightOpt);
+                        binary::MeshAttribute &weight = weightOpt->get();
+                        uint8_t vertexGroupCount = weight.count;
+
+                        if (vertexGroupCount == 1) {
+                            if (mesh.matrix_palette.size() > 1) {
+                                for (auto &v : mesh.vertices) {
+                                    auto& pos = std::get<std::vector<float>>(v.position.data);
+                                    auto& index = std::get<std::vector<uint8_t>>(v.index.data);
+
+                                    pos.resize(4);
+                                    pos[3] = index[0];
+
+                                    v.index.data = std::monostate();
+                                    v.weight.data = std::monostate();
+                                }
+                                meshHeader.vertex_groups_per_vertex = 1;
+                            } else {
+                                for (auto &v : mesh.vertices) {
+                                    v.index.data = std::monostate();
+                                    v.weight.data = std::monostate();
+                                }
+                                meshHeader.vertex_groups_per_vertex = 0;
+                            }
+                            attrData = buildMeshAttributes(mesh.vertices);
+                        } else {
+                            meshHeader.vertex_groups_per_vertex = vertexGroupCount;
+                        }
+                    }
+
+                    meshHeader.bytes_per_vertex = attrData.totalSizeBytes;
 
                     meshHeader.vertices_offset = meshDataBase + meshDataSize;
                     meshHeader.vertex_count = mesh.vertices.size();
