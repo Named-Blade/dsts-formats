@@ -117,8 +117,8 @@ enum Dtype : u16 {
     sShort,
     uInt,
     sInt,
-    Float16,
-    Float,
+    Float16_alias,
+    Float_alias,
 };
 
 struct MeshAttribute {
@@ -145,7 +145,9 @@ struct VertexAttribute<auto Attributes> {
         (Dtype::uInt): u32 values[count] @ pos;
         (Dtype::sInt): s32 values[count] @ pos;
         (Dtype::Float16): type::float16 values[count] @ pos;
+        (Dtype::Float16_alias): type::float16 values[count] @ pos;
         (Dtype::Float): float values[count] @ pos;
+        (Dtype::Float_alias): float values[count] @ pos;
     }
 };
 

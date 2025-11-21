@@ -317,4 +317,197 @@ namespace dsts::geom
         info.bounding_sphere_radius = max_dist;
         return info;
     }
+
+    inline binary::Dtype deduceDtype(const AttributeData& data) {
+    return std::visit([](auto&& arg) -> binary::Dtype {
+        using T = std::decay_t<decltype(arg)>;
+
+        if constexpr (std::is_same_v<T, std::vector<uint8_t>>)   return binary::Dtype::uByte;
+        if constexpr (std::is_same_v<T, std::vector<int8_t>>)    return binary::Dtype::sByte;
+        if constexpr (std::is_same_v<T, std::vector<uint16_t>>)  return binary::Dtype::uShort;
+        if constexpr (std::is_same_v<T, std::vector<int16_t>>)   return binary::Dtype::sShort;
+        if constexpr (std::is_same_v<T, std::vector<uint32_t>>)  return binary::Dtype::uInt;
+        if constexpr (std::is_same_v<T, std::vector<int32_t>>)   return binary::Dtype::sInt;
+        if constexpr (std::is_same_v<T, std::vector<float>>)     return binary::Dtype::Float_alias;
+        if constexpr (std::is_same_v<T, std::vector<float16>>)   return binary::Dtype::Float16_alias;
+        if constexpr (std::is_same_v<T, std::monostate>)         return binary::Dtype::Float;
+        return Dtype::Float; // unused
+    }, data);
+    }
+
+    inline size_t elementSize(binary::Dtype dtype){
+        switch (dtype) {
+        case binary::Dtype::uByte:   return sizeof(uint8_t);
+        case binary::Dtype::sByte:   return sizeof(int8_t);
+        case binary::Dtype::uShort:  return sizeof(uint16_t);
+        case binary::Dtype::sShort:  return sizeof(int16_t);
+        case binary::Dtype::uInt:    return sizeof(uint32_t);
+        case binary::Dtype::sInt:    return sizeof(int32_t);
+        case binary::Dtype::Float:
+        case binary::Dtype::Float_alias: return sizeof(float);
+        case binary::Dtype::Float16:
+        case binary::Dtype::Float16_alias: return sizeof(float16);
+        }
+        return 0;
+    }
+
+    inline const VertexAttribute* getAttributeByType(const Vertex& v, Atype t)
+    {
+        switch (t) {
+        case binary::Atype::Position: return &v.position;
+        case binary::Atype::Normal:   return &v.normal;
+        case binary::Atype::Tangent:  return &v.tangent;
+        case binary::Atype::Binormal: return &v.binormal;
+        case binary::Atype::UV1:      return &v.uv1;
+        case binary::Atype::UV2:      return &v.uv2;
+        case binary::Atype::UV3:      return &v.uv3;
+        case binary::Atype::unk_8:    return &v.unk_8;
+        case binary::Atype::Color:    return &v.color;
+        case binary::Atype::Index:    return &v.index;
+        case binary::Atype::Weight:   return &v.weight;
+        }
+        return nullptr;
+    }
+
+    bool validateAttributeConsistency(const std::vector<Vertex>& vertices) {
+        if (vertices.empty()) return true;
+
+        const Vertex& first = vertices[0];
+
+        auto getCount = [](const AttributeData& data) -> uint16_t {
+            return std::visit([](auto&& arg) -> uint16_t {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, std::monostate>)
+                    return 0;
+                else
+                    return static_cast<uint16_t>(arg.size());
+            }, data);
+        };
+
+        auto check = [&](binary::Atype type, const VertexAttribute& firstAttr) {
+            for (size_t i = 1; i < vertices.size(); ++i) {
+                const VertexAttribute* a = getAttributeByType(vertices[i], type);
+
+                bool firstEmpty = firstAttr.isEmpty();
+                bool thisEmpty  = a->isEmpty();
+
+                if (firstEmpty != thisEmpty)
+                    return false;
+
+                if (!firstEmpty) {
+                    // compare variant index (same dtype)
+                    if (firstAttr.data.index() != a->data.index())
+                        return false;
+
+                    // compare element counts
+                    if (getCount(firstAttr.data) != getCount(a->data))
+                        return false;
+                }
+            }
+            return true;
+        };
+
+        return
+            check(binary::Atype::Position, first.position) &&
+            check(binary::Atype::Normal,   first.normal) &&
+            check(binary::Atype::Tangent,  first.tangent) &&
+            check(binary::Atype::Binormal, first.binormal) &&
+            check(binary::Atype::UV1,      first.uv1) &&
+            check(binary::Atype::UV2,      first.uv2) &&
+            check(binary::Atype::UV3,      first.uv3) &&
+            check(binary::Atype::unk_8,    first.unk_8) &&
+            check(binary::Atype::Color,    first.color) &&
+            check(binary::Atype::Index,    first.index) &&
+            check(binary::Atype::Weight,   first.weight);
+    }
+
+    struct MeshAttributeResult {
+        std::vector<binary::MeshAttribute> attributes;
+        uint32_t totalSizeBytes;
+    };
+
+    MeshAttributeResult buildMeshAttributes(const std::vector<Vertex>& vertices) {
+        MeshAttributeResult out;
+        if (vertices.empty())
+            return out;
+
+        size_t offset = 0;
+        const Vertex& v0 = vertices[0];
+
+        constexpr Atype ordered[] = {
+            binary::Atype::Position, binary::Atype::Normal, binary::Atype::Tangent, binary::Atype::Binormal,
+            binary::Atype::UV1, binary::Atype::UV2, binary::Atype::UV3, binary::Atype::unk_8,
+            binary::Atype::Color, binary::Atype::Index, binary::Atype::Weight
+        };
+
+        auto getCount = [](const AttributeData& data) -> uint16_t {
+            return std::visit([](auto&& arg) -> uint16_t {
+                using T = std::decay_t<decltype(arg)>;
+                if constexpr (std::is_same_v<T, std::monostate>)
+                    return 0;
+                else
+                    return static_cast<uint16_t>(arg.size());
+            }, data);
+        };
+
+        auto align8 = [](size_t x) {
+            return (x + 7) & ~size_t(7);
+        };
+
+        for (binary::Atype at : ordered) {
+            const VertexAttribute* attr = getAttributeByType(v0, at);
+            if (!attr || attr->isEmpty())
+                continue;
+
+            binary::MeshAttribute desc;
+            desc.atype = at;
+            desc.count = std::visit([&getCount](auto&& vec){ return getCount(vec); }, attr->data);
+            desc.dtype = deduceDtype(attr->data);
+
+            // *** New: ensure 8-byte alignment ***
+            offset = align8(offset);
+
+            desc.offset = static_cast<uint16_t>(offset);
+            out.attributes.push_back(desc);
+
+            offset += desc.count * elementSize(desc.dtype);
+        }
+
+        offset = align8(offset);
+        out.totalSizeBytes = static_cast<uint32_t>(offset);
+
+        return out;
+    }
+
+    std::string packVertices(
+        const std::vector<binary::MeshAttribute>& descriptors,
+        const std::vector<Vertex>& vertices,
+        size_t vertexStride)   // total size per vertex (including padding)
+    {
+        std::string buffer;
+        buffer.resize(vertexStride * vertices.size(), '\0'); // preallocate
+
+        for (size_t vi = 0; vi < vertices.size(); ++vi) {
+            const Vertex& v = vertices[vi];
+            uint8_t* base = reinterpret_cast<uint8_t*>(&buffer[vi * vertexStride]);
+
+            for (const auto& desc : descriptors) {
+                const VertexAttribute* attr = getAttributeByType(v, desc.atype);
+                if (!attr || attr->isEmpty())
+                    continue;
+
+                // copy memory depending on variant type
+                std::visit([&](auto&& vec) {
+                    using T = std::decay_t<decltype(vec)>;
+                    if constexpr (std::is_same_v<T, std::monostate>) {
+                        // do nothing
+                    } else {
+                        memcpy(base + desc.offset, vec.data(), vec.size() * sizeof(typename T::value_type));
+                    }
+                }, attr->data);
+            }
+        }
+
+        return buffer;
+    }
 }
