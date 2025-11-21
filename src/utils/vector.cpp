@@ -6,8 +6,8 @@
 #include <algorithm> // for std::find
 
 template <typename T>
-int getIndex(const std::vector<std::shared_ptr<T>>& vec, const std::shared_ptr<T>& ptr) {
-    auto it = std::find(vec.begin(), vec.end(), ptr);
+int getIndex(const std::vector<T>& vec, const T& val) {
+    auto it = std::find(vec.begin(), vec.end(), val);
     if (it != vec.end()) {
         return std::distance(vec.begin(), it);
     }

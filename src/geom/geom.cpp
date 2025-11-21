@@ -373,12 +373,22 @@ namespace dsts::geom
                 size_t meshDataSize{};
                 header.mesh_offset = meshesBase;
 
-                std::vector<std::array<float, 3>> pos_list;
+                std::vector<std::array<float, 3>> pos_all;
 
                 for (int i = 0; i < meshes.size(); i++) {
+                    auto mesh = meshes[i];
                     binary::MeshHeader meshHeader{};
 
-                    //logic go here
+                    meshHeader.name_hash = mesh.name_hash;
+                    meshHeader.name_offset = stringSection.size();
+                    stringSection += mesh.name;
+                    stringSection += '\0';
+
+                    meshHeader.material_idx = getIndex(materials, mesh.material);
+
+                    meshHeader.unknown_0x18 = mesh.unknown_0x18;
+                    meshHeader.unknown_0x4C = mesh.unknown_0x4C;
+                    meshHeader.unknown_0x50 = mesh.unknown_0x50;
                     
                     meshHeaders[i] = meshHeader;
                 }
