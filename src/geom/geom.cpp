@@ -16,6 +16,7 @@
 #include "material.cpp"
 #include "../utils/hash.cpp"
 #include "../utils/stream.cpp"
+#include "../utils/align.cpp"
 
 namespace dsts::geom
 {  
@@ -355,8 +356,11 @@ namespace dsts::geom
                 header.ibpm_count = skeleton.bones.size();
 
                 binary::NameTableHeader nameTable;
-                size_t nameTableBase = base + sizeof(binary::GeomHeader);
-                std::string stringSection;
+                size_t nameTableBase = sizeof(binary::GeomHeader);
+                header.name_table_offset = nameTableBase;
+                std::vector<uint64_t> bone_name_offsets(skeleton.bones.size());
+                std::vector<uint64_t> material_name_offsets(materials.size());
+                std::string stringSection{"\0"};
 
                 nameTable.bone_name_count = skeleton.bones.size();
                 nameTable.material_name_count = materials.size();
@@ -364,30 +368,115 @@ namespace dsts::geom
                 nameTable.material_name_offsets_offset = nameTable.bone_name_offsets_offset + sizeof(uint64_t) * nameTable.bone_name_count;
 
                 std::vector<binary::MeshHeader> meshHeaders(meshes.size());
-                std::vector<size_t> meshHeaderBases(meshes.size());
                 size_t meshesBase = nameTable.material_name_offsets_offset + sizeof(uint64_t) * nameTable.material_name_count;
                 size_t meshDataBase = meshesBase + sizeof(binary::MeshHeader) * meshes.size();
                 size_t meshDataSize{};
+                header.mesh_offset = meshesBase;
 
                 std::vector<std::array<float, 3>> pos_list;
 
                 for (int i = 0; i < meshes.size(); i++) {
-                    binary::MeshHeader meshHeader;
+                    binary::MeshHeader meshHeader{};
 
                     //logic go here
                     
-                    meshHeaderBases[i] = meshesBase + sizeof(binary::MeshHeader) * i;
                     meshHeaders[i] = meshHeader;
                 }
 
                 std::vector<binary::MaterialHeader> materialHeaders(materials.size());
+                std::vector<std::vector<binary::ShaderUniform>> materialUniforms(materials.size());
+                std::vector<std::vector<binary::ShaderSetting>> materialSettings(materials.size());
                 std::vector<size_t> materialHeaderBases(materials.size());
                 size_t materialsBase = meshDataBase + meshDataSize;
+                header.material_offset = materialsBase;
 
+                size_t lastMaterialEnd = materialsBase;
                 for (int i = 0; i < materials.size(); i++) {
-                    binary::MaterialHeader materialHeader;
+                    binary::MaterialHeader materialHeader{};
+
+                    //logic go here
+
+                    std::vector<binary::ShaderUniform> uniforms(materials[i]->uniforms.size());
+                    for (int y = 0; y < materials[i]->uniforms.size(); y++) {
+                        binary::ShaderUniform uniform{};
+
+                        //logic go here
+
+                        uniforms[y] = uniform;
+                    }
+                    materialUniforms[i] = uniforms;
+
+                    std::vector<binary::ShaderSetting> settings(materials[i]->settings.size());
+                    for (int y = 0; y < materials[i]->settings.size(); y++) {
+                        binary::ShaderSetting setting{};
+
+                        //logic go here
+
+                        settings[y] = setting;
+                    }
+                    materialSettings[i] = settings;
 
                     materialHeaders[i] = materialHeader;
+                    materialHeaderBases[i] = lastMaterialEnd;
+                    lastMaterialEnd += sizeof(binary::MaterialHeader)
+                        + sizeof(binary::ShaderUniform) * materials[i]->uniforms.size()
+                        + sizeof(binary::ShaderSetting) * materials[i]->settings.size();
+                }
+
+                std::vector<binary::Ibpm> ibpms(skeleton.bones.size());
+                size_t ibpmsBase = align(lastMaterialEnd,0x10);
+                header.ibpm_offset = ibpmsBase;
+
+                for (int i = 0; i < skeleton.bones.size(); i++) {
+                    ibpms[i] = ibpmFromMatrix(ComputeInverseBindPose(skeleton.bones[i]));
+                }
+
+                size_t clutBase = ibpmsBase + sizeof(binary::Ibpm) * ibpms.size();
+                header.clut_offset = clutBase;
+
+                size_t stringsBase = clutBase + sizeof(binary::Clut);
+                header.strings_offset = stringsBase;
+
+                MemoryStream skeletonStream;
+                header.skeleton_file_size = skeleton.write(skeletonStream);
+                std::string skeletonBin = skeletonStream.str();
+                size_t skeletonBase = align(stringsBase + stringSection.size(),0x10) + 0x10;
+                header.skeleton_offset = skeletonBase;
+
+                //write
+                {
+                    f.seekp(base);
+                    f.write(reinterpret_cast<char*>(&header),sizeof(binary::GeomHeader));
+
+                    f.seekp(nameTableBase);
+                    f.write(reinterpret_cast<char*>(&nameTable),sizeof(binary::NameTableHeader));
+                    f.write(reinterpret_cast<char*>(bone_name_offsets.data()),sizeof(uint64_t) * bone_name_offsets.size());
+                    f.write(reinterpret_cast<char*>(material_name_offsets.data()),sizeof(uint64_t) * material_name_offsets.size());
+
+                    f.seekp(meshesBase);
+                    f.write(reinterpret_cast<char*>(meshHeaders.data()),sizeof(binary::MeshHeader) * meshHeaders.size());
+                    for (const auto &mesh: meshes) {
+                        //write mesh data
+                    }
+
+                    for (int i = 0; i < materialHeaders.size(); i++) {
+                        f.seekp(materialHeaderBases[i]);
+                        f.write(reinterpret_cast<char*>(&materialHeaders[i]),sizeof(binary::MaterialHeader));
+                        f.write(reinterpret_cast<char*>(materialUniforms[i].data()),sizeof(binary::ShaderUniform) * materialUniforms[i].size());
+                        f.write(reinterpret_cast<char*>(materialSettings[i].data()),sizeof(binary::ShaderSetting) * materialSettings[i].size());
+                    }
+
+                    f.seekp(ibpmsBase);
+                    f.write(reinterpret_cast<char*>(ibpms.data()),sizeof(binary::Ibpm) * ibpms.size());
+
+                    f.seekp(clutBase);
+                    f.write(reinterpret_cast<char*>(&clut),sizeof(binary::Clut));
+
+                    f.seekp(stringsBase);
+                    f.write(stringSection.data(),stringSection.size());
+
+                    f.seekp(skeletonBase);
+                    f.write(skeletonBin.data(),skeletonBin.size());
                 }
             }
 

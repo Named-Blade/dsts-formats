@@ -44,5 +44,15 @@ void bind_geom(py::module_ &m) {
             geom.read(f, base);
             f.close();
             return geom;
-        }, py::arg("data"), py::arg("base")=0);
+        }, py::arg("data"), py::arg("base")=0)
+        .def("to_bytes", [](Geom &g) {
+            MemoryStream f;
+            g.write(f);
+            return py::bytes(f.str());
+        })
+        .def("to_file", [](Geom &g, py::str filename){
+            std::ofstream f(filename, std::ios::binary);
+            g.write(f);
+            f.close();
+        });
 }

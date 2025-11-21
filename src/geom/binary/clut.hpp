@@ -12,7 +12,7 @@ namespace dsts::geom::binary
 
     struct Clut {
         uint8_t unk1[0x10];
-        ColorData data;
+        ColorData data[0x100];
         uint8_t unk2[0xc];
     };
 
