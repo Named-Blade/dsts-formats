@@ -24,6 +24,8 @@ namespace dsts::geom
             uint32_t unknown_0x30 = 0;
             uint32_t unknown_0x34 = 0;
 
+            binary::Clut clut;
+
             Skeleton skeleton;
             std::vector<Mesh> meshes;
             std::vector<std::shared_ptr<Material>> materials;
@@ -332,6 +334,12 @@ namespace dsts::geom
                     meshes[i].material = materials[meshHeaders[i].material_idx];
                 }
 
+                //do this properly latter
+                f.seekg(base + header.clut_offset);
+                f.read(reinterpret_cast<char*>(&clut), sizeof(binary::Clut));
+
+                assert(header.light_count == 0);
+                assert(header.camera_count == 0);
             }
 
     };
