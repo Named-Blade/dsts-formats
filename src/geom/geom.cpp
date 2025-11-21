@@ -15,6 +15,7 @@
 #include "mesh.cpp"
 #include "material.cpp"
 #include "../utils/hash.cpp"
+#include "../utils/stream.cpp"
 
 namespace dsts::geom
 {  
@@ -340,6 +341,54 @@ namespace dsts::geom
 
                 assert(header.light_count == 0);
                 assert(header.camera_count == 0);
+            }
+
+            void write(std::ostream& f, int base = 0){
+                binary::GeomHeader header;
+
+                header.unknown_0x10 = unknown_0x10;
+                header.unknown_0x30 = unknown_0x30;
+                header.unknown_0x34 = unknown_0x34;
+
+                header.mesh_count = meshes.size();
+                header.material_count = materials.size();
+                header.ibpm_count = skeleton.bones.size();
+
+                binary::NameTableHeader nameTable;
+                size_t nameTableBase = base + sizeof(binary::GeomHeader);
+                std::string stringSection;
+
+                nameTable.bone_name_count = skeleton.bones.size();
+                nameTable.material_name_count = materials.size();
+                nameTable.bone_name_offsets_offset = nameTableBase + sizeof(binary::NameTableHeader);
+                nameTable.material_name_offsets_offset = nameTable.bone_name_offsets_offset + sizeof(uint64_t) * nameTable.bone_name_count;
+
+                std::vector<binary::MeshHeader> meshHeaders(meshes.size());
+                std::vector<size_t> meshHeaderBases(meshes.size());
+                size_t meshesBase = nameTable.material_name_offsets_offset + sizeof(uint64_t) * nameTable.material_name_count;
+                size_t meshDataBase = meshesBase + sizeof(binary::MeshHeader) * meshes.size();
+                size_t meshDataSize{};
+
+                std::vector<std::array<float, 3>> pos_list;
+
+                for (int i = 0; i < meshes.size(); i++) {
+                    binary::MeshHeader meshHeader;
+
+                    //logic go here
+                    
+                    meshHeaderBases[i] = meshesBase + sizeof(binary::MeshHeader) * i;
+                    meshHeaders[i] = meshHeader;
+                }
+
+                std::vector<binary::MaterialHeader> materialHeaders(materials.size());
+                std::vector<size_t> materialHeaderBases(materials.size());
+                size_t materialsBase = meshDataBase + meshDataSize;
+
+                for (int i = 0; i < materials.size(); i++) {
+                    binary::MaterialHeader materialHeader;
+
+                    materialHeaders[i] = materialHeader;
+                }
             }
 
     };
