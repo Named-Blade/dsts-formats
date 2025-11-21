@@ -369,6 +369,7 @@ namespace dsts::geom
 
                 std::vector<binary::MeshHeader> meshHeaders(meshes.size());
                 std::vector<std::vector<uint32_t>> matrixPalettes(meshes.size());
+                std::vector<std::vector<uint16_t>> indices(meshes.size());
                 size_t meshesBase = nameTable.material_name_offsets_offset + sizeof(uint64_t) * nameTable.material_name_count;
                 size_t meshDataBase = meshesBase + sizeof(binary::MeshHeader) * meshes.size();
                 size_t meshDataSize{};
@@ -399,6 +400,11 @@ namespace dsts::geom
                     }
                     meshDataSize += sizeof(uint32_t) * palette.size();
                     matrixPalettes[i] = palette;
+
+                    meshHeader.indices_offset = meshDataBase + meshDataSize;
+                    meshHeader.index_count = mesh.indices.size();
+                    meshDataSize += sizeof(uint16_t) * mesh.indices.size();
+                    indices[i] = mesh.indices;
                     
                     meshHeaders[i] = meshHeader;
                 }
@@ -540,6 +546,7 @@ namespace dsts::geom
                     f.write(reinterpret_cast<char*>(meshHeaders.data()), sizeof(binary::MeshHeader) * meshHeaders.size());
                     for (int i = 0; i < meshHeaders.size() ; i++) {
                         f.write(reinterpret_cast<char*>(matrixPalettes[i].data()), sizeof(uint32_t) * matrixPalettes[i].size());
+                        f.write(reinterpret_cast<char*>(indices[i].data()), sizeof(uint16_t) * indices[i].size());
                     }
 
                     for (int i = 0; i < materialHeaders.size(); i++) {
