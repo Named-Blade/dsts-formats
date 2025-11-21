@@ -368,6 +368,7 @@ namespace dsts::geom
                 nameTable.material_name_offsets_offset = nameTable.bone_name_offsets_offset + sizeof(uint64_t) * nameTable.bone_name_count;
 
                 std::vector<binary::MeshHeader> meshHeaders(meshes.size());
+                std::vector<std::vector<uint32_t>> matrixPalettes(meshes.size());
                 size_t meshesBase = nameTable.material_name_offsets_offset + sizeof(uint64_t) * nameTable.material_name_count;
                 size_t meshDataBase = meshesBase + sizeof(binary::MeshHeader) * meshes.size();
                 size_t meshDataSize{};
@@ -389,6 +390,15 @@ namespace dsts::geom
                     meshHeader.unknown_0x18 = mesh.unknown_0x18;
                     meshHeader.unknown_0x4C = mesh.unknown_0x4C;
                     meshHeader.unknown_0x50 = mesh.unknown_0x50;
+
+                    meshHeader.matrix_palette_offset = meshDataBase + meshDataSize;
+                    meshHeader.matrix_palette_count = mesh.matrix_palette.size();
+                    std::vector<uint32_t> palette(mesh.matrix_palette.size());
+                    for (int y = 0; y < mesh.matrix_palette.size() ; y++) {
+                        palette[y] = getIndex(skeleton.bones, mesh.matrix_palette[y]);
+                    }
+                    meshDataSize += sizeof(uint32_t) * palette.size();
+                    matrixPalettes[i] = palette;
                     
                     meshHeaders[i] = meshHeader;
                 }
@@ -519,31 +529,31 @@ namespace dsts::geom
                 //write
                 {
                     f.seekp(base);
-                    f.write(reinterpret_cast<char*>(&header),sizeof(binary::GeomHeader));
+                    f.write(reinterpret_cast<char*>(&header), sizeof(binary::GeomHeader));
 
                     f.seekp(nameTableBase);
-                    f.write(reinterpret_cast<char*>(&nameTable),sizeof(binary::NameTableHeader));
-                    f.write(reinterpret_cast<char*>(bone_name_offsets.data()),sizeof(uint64_t) * bone_name_offsets.size());
-                    f.write(reinterpret_cast<char*>(material_name_offsets.data()),sizeof(uint64_t) * material_name_offsets.size());
+                    f.write(reinterpret_cast<char*>(&nameTable), sizeof(binary::NameTableHeader));
+                    f.write(reinterpret_cast<char*>(bone_name_offsets.data()), sizeof(uint64_t) * bone_name_offsets.size());
+                    f.write(reinterpret_cast<char*>(material_name_offsets.data()), sizeof(uint64_t) * material_name_offsets.size());
 
                     f.seekp(meshesBase);
-                    f.write(reinterpret_cast<char*>(meshHeaders.data()),sizeof(binary::MeshHeader) * meshHeaders.size());
-                    for (const auto &mesh: meshes) {
-                        //write mesh data
+                    f.write(reinterpret_cast<char*>(meshHeaders.data()), sizeof(binary::MeshHeader) * meshHeaders.size());
+                    for (int i = 0; i < meshHeaders.size() ; i++) {
+                        f.write(reinterpret_cast<char*>(matrixPalettes[i].data()), sizeof(uint32_t) * matrixPalettes[i].size());
                     }
 
                     for (int i = 0; i < materialHeaders.size(); i++) {
                         f.seekp(materialHeaderBases[i]);
-                        f.write(reinterpret_cast<char*>(&materialHeaders[i]),sizeof(binary::MaterialHeader));
-                        f.write(reinterpret_cast<char*>(materialUniforms[i].data()),sizeof(binary::ShaderUniform) * materialUniforms[i].size());
-                        f.write(reinterpret_cast<char*>(materialSettings[i].data()),sizeof(binary::ShaderSetting) * materialSettings[i].size());
+                        f.write(reinterpret_cast<char*>(&materialHeaders[i]), sizeof(binary::MaterialHeader));
+                        f.write(reinterpret_cast<char*>(materialUniforms[i].data()), sizeof(binary::ShaderUniform) * materialUniforms[i].size());
+                        f.write(reinterpret_cast<char*>(materialSettings[i].data()), sizeof(binary::ShaderSetting) * materialSettings[i].size());
                     }
 
                     f.seekp(ibpmsBase);
-                    f.write(reinterpret_cast<char*>(ibpms.data()),sizeof(binary::Ibpm) * ibpms.size());
+                    f.write(reinterpret_cast<char*>(ibpms.data()), sizeof(binary::Ibpm) * ibpms.size());
 
                     f.seekp(clutBase);
-                    f.write(reinterpret_cast<char*>(&clut),sizeof(binary::Clut));
+                    f.write(reinterpret_cast<char*>(&clut), sizeof(binary::Clut));
 
                     f.seekp(stringsBase);
                     f.write(stringSection.data(),stringSection.size());
