@@ -1,7 +1,11 @@
 from . import skeleton
 from . import mesh
+from . import material
 from . import utils
 from . import dsts_formats
+
+from pathlib import Path
+import os
 
 import bpy
 from bpy_extras.io_utils import ImportHelper
@@ -38,9 +42,21 @@ class MY_OT_dsts_geom_import_operator(Operator, ImportHelper):
 
         armature_obj = skeleton.import_skeleton(geom.skeleton, new_collection, utils.unflop)
 
+        blender_materials = {}
+        for mat_data in geom.materials:
+            mat = bpy.data.materials.new(name=mat_data.name)
+            mat_data.name = mat.name # fix possible duplicate names
+
+            material.resolve_material(mat, mat_data, str(Path(filepath).parent) + os.sep + "images")
+
+            blender_materials[mat_data.name] = mat
+
         for mesh_obj in geom.meshes:
             bl_mesh = mesh.build_blender_mesh(mesh_obj, utils.unflop)
             obj = bpy.data.objects.new(mesh_obj.name, bl_mesh)
+
+            if mesh_obj.material:
+                obj.data.materials.append(blender_materials[mesh_obj.material.name])
 
             # Link object to the new collection instead of the active one
             new_collection.objects.link(obj)
