@@ -494,6 +494,12 @@ namespace dsts::geom
                 size_t stringsBase = clutBase + sizeof(binary::Clut);
                 header.strings_offset = stringsBase;
 
+                for (int i = 0; i < skeleton.bones.size(); i++) {
+                    bone_name_offsets[i] = stringSection.size();
+                    stringSection += skeleton.bones[i]->name;
+                    stringSection += '\0';
+                }
+
                 MemoryStream skeletonStream;
                 header.skeleton_file_size = skeleton.write(skeletonStream);
                 std::string skeletonBin = skeletonStream.str();
