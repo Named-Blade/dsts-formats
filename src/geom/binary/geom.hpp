@@ -17,8 +17,8 @@ namespace dsts::geom::binary
         char padding[0x2];
         
         uint32_t unknown_0x10;
-        float center_point[3];
-        float bbox_diag[3];
+        float centre[3];
+        float bbox[3];
         char padding2[0x4];
         uint32_t unknown_0x30;
         uint32_t unknown_0x34;

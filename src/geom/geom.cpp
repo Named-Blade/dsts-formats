@@ -211,6 +211,24 @@ namespace dsts::geom
                     meshes.push_back(mesh);
                 }
 
+                {
+                    std::vector<std::array<float, 3>> pos_list;
+                    for (const auto &mesh : meshes) {
+                        for (const auto &vertex : mesh.vertices){
+                            const auto& floats = std::get<std::vector<float>>(vertex.position.data);
+                            pos_list.emplace_back(std::array<float, 3>{floats[0], floats[1], floats[2]});
+                        }
+                    }
+                    BoundingInfo info = calculateBoundingInfo<float>(pos_list);
+                    info.bounding_sphere_radius = 0.0;
+
+                    BoundingInfo h_info{};
+                    h_info.bbox = {header.bbox[0],header.bbox[1],header.bbox[2]};
+                    h_info.centre = {header.centre[0],header.centre[1],header.centre[2]};
+
+                    assert(boundingEquals(info,h_info));
+                }
+
                 f.seekg(base + header.material_offset);
                 for (int i = 0; i < header.material_count ; i++){
                     std::shared_ptr<Material> mat_ptr = std::make_shared<Material>();

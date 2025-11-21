@@ -13,3 +13,23 @@ int getIndex(const std::vector<std::shared_ptr<T>>& vec, const std::shared_ptr<T
     }
     return -1; // not found
 }
+
+template <typename T>
+std::vector<T> flatten(const std::vector<std::vector<T>>& nested)
+{
+    std::vector<T> result;
+
+    // Pre-compute total size for one allocation
+    size_t total_size = 0;
+    for (const auto& v : nested) {
+        total_size += v.size();
+    }
+    result.reserve(total_size);
+
+    // Append all inner vectors
+    for (const auto& v : nested) {
+        result.insert(result.end(), v.begin(), v.end());
+    }
+
+    return result;
+}
