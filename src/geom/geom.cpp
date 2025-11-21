@@ -14,6 +14,7 @@
 #include "skeleton.cpp"
 #include "mesh.cpp"
 #include "material.cpp"
+#include "stringSection.cpp"
 #include "../utils/hash.cpp"
 #include "../utils/stream.cpp"
 #include "../utils/align.cpp"
@@ -359,8 +360,7 @@ namespace dsts::geom
                 header.name_table_offset = nameTableBase;
                 std::vector<uint64_t> bone_name_offsets(skeleton.bones.size());
                 std::vector<uint64_t> material_name_offsets(materials.size());
-                std::string stringSection{};
-                stringSection += '\0';
+                StringSection stringSection{};
 
                 nameTable.bone_name_count = skeleton.bones.size();
                 nameTable.material_name_count = materials.size();
@@ -382,9 +382,7 @@ namespace dsts::geom
                     binary::MeshHeader meshHeader{};
 
                     meshHeader.name_hash = mesh.name_hash;
-                    meshHeader.name_offset = stringSection.size();
-                    stringSection += mesh.name;
-                    stringSection += '\0';
+                    meshHeader.name_offset = stringSection.add(mesh.name);
 
                     meshHeader.material_idx = getIndex(materials, mesh.material);
 
@@ -421,9 +419,7 @@ namespace dsts::geom
                     binary::MaterialHeader materialHeader{};
 
                     materialHeader.name_hash = materials[i]->name_hash;
-                    material_name_offsets[i] = stringSection.size();
-                    stringSection += materials[i]->name;
-                    stringSection += '\0';
+                    material_name_offsets[i] = stringSection.add(materials[i]->name);
 
                     materialHeader.uniform_count = materials[i]->uniforms.size();
                     materialHeader.setting_count = materials[i]->settings.size();
@@ -462,12 +458,9 @@ namespace dsts::geom
                             auto value = std::get<std::string>(materials[i]->uniforms[y].value);
                             binary::TexturePayload payload;
 
-                            payload.texture_name_offset = stringSection.size();
+                            payload.texture_name_offset = stringSection.add(value);
                             payload.texture_name_length = value.size();
                             payload.unknown_0xC = materials[i]->uniforms[y].unknown_0xC;
-
-                            stringSection += value;
-                            stringSection += '\0';
 
                             uniform.float_count = 0;
                             uniform.payload.texture = payload;
@@ -521,15 +514,13 @@ namespace dsts::geom
                 header.strings_offset = stringsBase;
 
                 for (int i = 0; i < skeleton.bones.size(); i++) {
-                    bone_name_offsets[i] = stringSection.size();
-                    stringSection += skeleton.bones[i]->name;
-                    stringSection += '\0';
+                    bone_name_offsets[i] = stringSection.add(skeleton.bones[i]->name);
                 }
 
                 MemoryStream skeletonStream;
                 header.skeleton_file_size = skeleton.write(skeletonStream);
                 std::string skeletonBin = skeletonStream.str();
-                size_t skeletonBase = align(stringsBase + stringSection.size(),0x10) + 0x10;
+                size_t skeletonBase = align(stringsBase + stringSection.data().size(),0x10) + 0x10;
                 header.skeleton_offset = skeletonBase;
 
                 //write
@@ -563,7 +554,7 @@ namespace dsts::geom
                     f.write(reinterpret_cast<char*>(&clut), sizeof(binary::Clut));
 
                     f.seekp(stringsBase);
-                    f.write(stringSection.data(),stringSection.size());
+                    f.write(stringSection.data().data(),stringSection.data().size());
 
                     f.seekp(skeletonBase);
                     f.write(skeletonBin.data(),skeletonBin.size());
