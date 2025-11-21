@@ -410,6 +410,7 @@ namespace dsts::geom
                     meshHeader.unknown_0x50 = mesh.unknown_0x50;
 
                     auto attrData = buildMeshAttributes(mesh.vertices);
+                    std::vector<Vertex> vertexCopy = mesh.vertices;
 
                     {
                         auto weightOpt = getAttributeByAtype(attrData.attributes, binary::Atype::Weight);
@@ -419,7 +420,7 @@ namespace dsts::geom
 
                         if (vertexGroupCount == 1) {
                             if (mesh.matrix_palette.size() > 1) {
-                                for (auto &v : mesh.vertices) {
+                                for (auto &v : vertexCopy) {
                                     auto& pos = std::get<std::vector<float>>(v.position.data);
                                     auto& index = std::get<std::vector<uint8_t>>(v.index.data);
 
@@ -431,13 +432,13 @@ namespace dsts::geom
                                 }
                                 meshHeader.vertex_groups_per_vertex = 1;
                             } else {
-                                for (auto &v : mesh.vertices) {
+                                for (auto &v : vertexCopy) {
                                     v.index.data = std::monostate();
                                     v.weight.data = std::monostate();
                                 }
                                 meshHeader.vertex_groups_per_vertex = 0;
                             }
-                            attrData = buildMeshAttributes(mesh.vertices);
+                            attrData = buildMeshAttributes(vertexCopy);
                         } else {
                             meshHeader.vertex_groups_per_vertex = vertexGroupCount;
                         }
@@ -446,8 +447,8 @@ namespace dsts::geom
                     meshHeader.bytes_per_vertex = attrData.totalSizeBytes;
 
                     meshHeader.vertices_offset = meshDataBase + meshDataSize;
-                    meshHeader.vertex_count = mesh.vertices.size();
-                    std::string verts = packVertices(attrData.attributes, mesh.vertices, attrData.totalSizeBytes);
+                    meshHeader.vertex_count = vertexCopy.size();
+                    std::string verts = packVertices(attrData.attributes, vertexCopy, attrData.totalSizeBytes);
                     meshDataSize += verts.size();
                     vertices[i] = verts;
 
@@ -471,8 +472,8 @@ namespace dsts::geom
                     attributes[i] = attrData.attributes;
 
                     std::vector<std::array<float, 3>> pos;
-                    pos.reserve(mesh.vertices.size());
-                    for (const auto& vertex : mesh.vertices) {
+                    pos.reserve(vertexCopy.size());
+                    for (const auto& vertex : vertexCopy) {
                         const auto& floats = std::get<std::vector<float>>(vertex.position.data);
                         pos.emplace_back(std::array<float, 3>{floats[0], floats[1], floats[2]});
                         pos_all.emplace_back(std::array<float, 3>{floats[0], floats[1], floats[2]});
