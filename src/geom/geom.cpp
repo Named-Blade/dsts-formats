@@ -248,6 +248,32 @@ namespace dsts::geom
                         uniform.unknown_0x18 = uniform_bin.unknown_0x18;
                         uniform.unknown_0x1C = uniform_bin.unknown_0x1C;
 
+                        if (uniform_bin.float_count > 0) {
+                            uniform.is_texture = false;
+                            uniform.floats.resize(uniform_bin.float_count);
+                            for (int y = 0; y < uniform_bin.float_count ; y++){
+                                uniform.floats.push_back(uniform_bin.payload.floats.payload[y]);
+                            }
+                        } else {
+                            size_t current = f.tellg();
+
+                            uniform.is_texture = true;
+                            f.seekg(base + header.strings_offset + uniform_bin.payload.texture.texture_name_offset);
+
+                            std::string result;
+                            char ch;
+                            while (f.get(ch)) {
+                                if (ch == '\0') break;
+                                result += ch;
+                            }
+                            uniform.texture_name = result;
+                            assert(uniform.texture_name.size() == uniform_bin.payload.texture.texture_name_length);
+
+                            uniform.unknown_0xC = uniform_bin.payload.texture.unknown_0xC;
+
+                            f.seekg(current);
+                        }
+
                         material.uniforms.push_back(uniform);
                     }
 

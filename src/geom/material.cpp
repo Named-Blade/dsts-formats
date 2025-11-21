@@ -25,6 +25,15 @@ namespace dsts::geom
             std::string parameter_name;
             uint16_t parameter_id = 0;
 
+            bool is_texture;
+
+            //not texture
+            std::vector<float> floats;
+
+            //is texture
+            std::string texture_name;
+            uint32_t unknown_0xC;
+
             //unks
             uint32_t unknown_0x14;
             uint32_t unknown_0x18;
