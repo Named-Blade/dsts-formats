@@ -22,36 +22,32 @@ def get_np_dtype(dtype_str):
     }
     return mapping.get(dtype_str, np.float32)
 
-def extract_attribute(raw_bytes, stride, count, attr_meta, component_count=1):
+def extract_attribute(raw_bytes, stride, num_verts, attr):
     """
-    Extracts a specific attribute from the interleaved binary buffer 
-    and returns a numpy array of the correct shape and type.
+    Extracts a specific attribute from the interleaved binary buffer.
+    Uses attr.count to determine dimensionality (1, 2, 3, 4).
     """
-    dtype = get_np_dtype(attr_meta.dtype)
+    dtype = get_np_dtype(attr.dtype)
+    
+    # Calculate total size of this attribute (e.g., 3 floats * 4 bytes = 12 bytes)
+    component_count = attr.count 
+    attr_size = np.dtype(dtype).itemsize * component_count
     
     # Create a view of the whole buffer as uint8
     byte_view = np.frombuffer(raw_bytes, dtype=np.uint8)
     
-    # Slice the buffer: start at offset, jump by stride
-    # We only take the bytes relevant to this specific attribute type size
-    attr_size = np.dtype(dtype).itemsize * component_count
+    # Reshape to (num_verts, stride) to isolate vertices
+    vertex_data = byte_view.reshape(num_verts, stride)
     
-    # We need to perform a strided copy because np.frombuffer doesn't support 
-    # arbitrary strides on the buffer source directly for different types.
-    # 1. Reshape to (count, stride) to isolate vertices
-    # 2. Slice the columns we need
-    # 3. View as the target type
-    
-    # Note: This assumes the buffer is perfectly packed/padded to 'stride'
-    vertex_data = byte_view.reshape(count, stride)
-    attr_bytes = vertex_data[:, attr_meta.offset : attr_meta.offset + attr_size]
+    # Slice the columns we need
+    attr_bytes = vertex_data[:, attr.offset : attr.offset + attr_size]
     
     # Convert bytes to actual values
-    # We must copy here because 'frombuffer' requires contiguous memory for the new dtype
     values = np.frombuffer(attr_bytes.tobytes(), dtype=dtype)
     
+    # Reshape to (Vertices, Components) if > 1 component
     if component_count > 1:
-        values = values.reshape(count, component_count)
+        values = values.reshape(num_verts, component_count)
         
     return values
 
@@ -59,52 +55,38 @@ def extract_attribute(raw_bytes, stride, count, attr_meta, component_count=1):
 # Convert Mesh → Blender Mesh (Optimized)
 # ----------------------------------------------------------
 def import_mesh_object(bl_mesh: dsts_formats.Mesh, armature_obj, materials_dict, collection, coord_transform=Matrix.Rotation(math.radians(90), 4, 'X')):
-    """
-    Creates a Blender Object with Mesh, Materials, and Weights using zero-copy optimization.
-    Includes Coordinate Transformation.
-    """
-    # 1. Unpack data once
+    
     attributes, stride, packed = bl_mesh.pack_vertices()
     num_verts = len(packed) // stride
     attr_map = {a.atype: a for a in attributes}
 
     # --- GEOMETRY ---
-    # Extract raw positions (N, 3)
-    positions = extract_attribute(packed, stride, num_verts, attr_map["position"], 3)
+    # No need to pass '3', the attribute knows it has 3 components
+    positions = extract_attribute(packed, stride, num_verts, attr_map["position"])
     
-    # --- APPLY TRANSFORM (Optimized) ---
     if coord_transform:
         if isinstance(coord_transform, Matrix):
-            # FAST: Numpy matrix multiplication
             mat = np.array(coord_transform)
-            # 1. Rotate: P @ R_T (Transpose needed because vectors are rows in numpy shape N,3)
-            # 2. Translate: + T
             positions = positions @ mat[:3, :3].T + mat[:3, 3]
         else:
-            # SLOW: Fallback for custom functions
             vecs = [coord_transform(Vector(p)) for p in positions]
             positions = np.array(vecs, dtype=np.float32)
 
-    # Handle Indices
     flat_indices = bl_mesh.get_indices()
     faces = np.array(flat_indices, dtype=np.int32).reshape(-1, 3)
 
-    # Create Mesh
     mesh_data = bpy.data.meshes.new(bl_mesh.name)
     mesh_data.from_pydata(positions, [], faces)
     
     # --- NORMALS ---
     if "normal" in attr_map:
-        normals = extract_attribute(packed, stride, num_verts, attr_map["normal"], 3)
+        normals = extract_attribute(packed, stride, num_verts, attr_map["normal"])
         
-        # Apply Rotation to Normals (No translation)
         if coord_transform and isinstance(coord_transform, Matrix):
             mat_rot = np.array(coord_transform)[:3, :3]
             normals = normals @ mat_rot.T
-            
-            # Re-normalize (fix scaling artifacts)
             norms = np.linalg.norm(normals, axis=1, keepdims=True)
-            norms[norms == 0] = 1 # Prevent div by zero
+            norms[norms == 0] = 1 
             normals /= norms
             
         mesh_data.normals_split_custom_set_from_vertices(normals)
@@ -118,20 +100,20 @@ def import_mesh_object(bl_mesh: dsts_formats.Mesh, armature_obj, materials_dict,
         
         for uv_name in ["uv1", "uv2", "uv3"]:
             if uv_name in attr_map:
-                uv_data = extract_attribute(packed, stride, num_verts, attr_map[uv_name], 2)
+                uv_data = extract_attribute(packed, stride, num_verts, attr_map[uv_name])
                 uv_layer = mesh_data.uv_layers.new(name=uv_name)
                 uv_layer.data.foreach_set("uv", uv_data[loop_v_idxs].reshape(-1))
 
-    # --- OBJECT CREATION ---
+    # --- OBJECT ---
     obj = bpy.data.objects.new(bl_mesh.name, mesh_data)
     collection.objects.link(obj)
 
-    # Assign Material
     if bl_mesh.material and bl_mesh.material.name in materials_dict:
         obj.data.materials.append(materials_dict[bl_mesh.material.name])
 
-    # --- WEIGHT ASSIGNMENT ---
+    # --- WEIGHTS (Fixed for single-bone cases) ---
     if "index" in attr_map and "weight" in attr_map and armature_obj:
+        # 1. Map Bones
         palette_map = {}
         if bl_mesh.matrix_palette:
             for idx, bone_data in enumerate(bl_mesh.matrix_palette):
@@ -140,17 +122,30 @@ def import_mesh_object(bl_mesh: dsts_formats.Mesh, armature_obj, materials_dict,
                     if bone_data.name not in obj.vertex_groups:
                         obj.vertex_groups.new(name=bone_data.name)
 
-        comp_count = 4 
-        idx_data = extract_attribute(packed, stride, num_verts, attr_map["index"], comp_count)
-        wgt_data = extract_attribute(packed, stride, num_verts, attr_map["weight"], comp_count)
+        # 2. Extract Data
+        idx_data = extract_attribute(packed, stride, num_verts, attr_map["index"])
+        wgt_data = extract_attribute(packed, stride, num_verts, attr_map["weight"])
         
+        # Normalize if uByte
         if wgt_data.dtype == np.uint8:
             wgt_data = wgt_data.astype(np.float32) / 255.0
 
+        # --- FIX: Ensure data is always 2D (N, Comp) ---
+        # If count was 1, extract_attribute returned (N,), which causes the error
+        if idx_data.ndim == 1:
+            idx_data = idx_data.reshape(-1, 1)
+        if wgt_data.ndim == 1:
+            wgt_data = wgt_data.reshape(-1, 1)
+
+        # 3. Flatten
         flat_weights = wgt_data.flatten()
         flat_indices = idx_data.flatten()
+        
+        # Now shape[1] is guaranteed to exist
+        comp_count = idx_data.shape[1] 
         flat_v_ids = np.repeat(np.arange(num_verts), comp_count)
 
+        # 4. Filter & Assign
         mask = flat_weights > 0.001
         
         valid_weights = flat_weights[mask]
