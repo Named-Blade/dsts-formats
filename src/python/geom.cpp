@@ -54,5 +54,6 @@ void bind_geom(py::module_ &m) {
             std::ofstream f(filename, std::ios::binary);
             g.write(f);
             f.close();
-        });
+        })
+        .def("copy", &Geom::copy);
 }

@@ -656,5 +656,14 @@ namespace dsts::geom
                 }
             }
 
+            Geom copy() {
+                MemoryStream geomStream;
+                write(geomStream);
+                Geom geom;
+                std::istringstream str(geomStream.str());
+                geom.read(str);
+                return geom;
+            }
+
     };
 }
