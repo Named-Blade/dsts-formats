@@ -23,6 +23,12 @@ def resolve_material(mat, mat_data, tex_folder):
     principled_node.location = (0, 0)
     links.new(principled_node.outputs["BSDF"], output_node.inputs["Surface"])
 
+    shader_data_node = nodes.new(type="DSTS_ShaderData")
+    shader_data_node.location = (600, 0)
+
+    for i, shader_name in enumerate((m.name for m in mat_data.shaders)):
+        shader_data_node.shader_strings[i].value = shader_name
+
     # Track vertical position for node layout
     base_x = -400
     base_y = 0

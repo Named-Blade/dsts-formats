@@ -4,6 +4,8 @@ from . import material
 from . import utils
 from . import dsts_formats
 
+from .data import shaderDataNode
+
 from pathlib import Path
 import os
 
@@ -94,7 +96,9 @@ def menu_func_import(self, context):
 def register():
     bpy.utils.register_class(MY_OT_dsts_geom_import_operator)
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
+    shaderDataNode.register()
 
 def unregister():
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
     bpy.utils.unregister_class(MY_OT_dsts_geom_import_operator)
+    shaderDataNode.unregister()
