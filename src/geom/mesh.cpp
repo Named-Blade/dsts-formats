@@ -166,81 +166,55 @@ namespace dsts::geom
             bool flag_6;
             bool flag_7;
 
-            std::vector<Triangle> toTriangleListFromTriangles() {
-                std::vector<Triangle> tris;
-                tris.reserve(indices.size() / 3);
-
-                for (size_t i = 0; i + 2 < indices.size(); i += 3)
-                {
-                    uint16_t i0 = indices[i + 0];
-                    uint16_t i1 = indices[i + 1];
-                    uint16_t i2 = indices[i + 2];
-
-                    tris.push_back({
-                        i0,
-                        i1,
-                        i2,
-                        vertices[i0],
-                        vertices[i1],
-                        vertices[i2]
-                    });
+            std::vector<uint32_t> get_indices_as_triangle_list() {
+                // Case 1: It's already a Triangle List
+                // If your internal 'indices' are uint16_t, we cast them to uint32_t for safety in Python/Blender
+                // (Blender supports int loops, so 32-bit is safer for large meshes > 65k verts)
+                if (primitive == PrimitiveType::Triangles) { 
+                    std::vector<uint32_t> result;
+                    result.reserve(indices.size());
+                    for(auto idx : indices) {
+                        result.push_back(static_cast<uint32_t>(idx));
+                    }
+                    return result;
                 }
 
-                return tris;
-            }
+                // Case 2: Triangle Strip -> Triangle List
+                // This logic mimics your original strip logic but only stores indices
+                std::vector<uint32_t> result;
+                if (indices.size() < 3) return result;
 
-            std::vector<Triangle> toTriangleListFromTriangleStrip(){
-                std::vector<Triangle> tris;
-                tris.reserve(indices.size());
+                result.reserve((indices.size() - 2) * 3); // Approximate reservation
 
                 bool flip = false;
 
-                for (size_t i = 0; i + 2 < indices.size(); ++i)
-                {
-                    uint16_t i0 = indices[i + 0];
-                    uint16_t i1 = indices[i + 1];
-                    uint16_t i2 = indices[i + 2];
+                for (size_t i = 0; i + 2 < indices.size(); ++i) {
+                    uint32_t i0 = indices[i + 0];
+                    uint32_t i1 = indices[i + 1];
+                    uint32_t i2 = indices[i + 2];
 
-                    // skip degenerate triangles
-                    if (i0 == i1 || i1 == i2 || i0 == i2){
+                    // Skip degenerate triangles (where any two indices are the same)
+                    if (i0 == i1 || i1 == i2 || i0 == i2) {
                         flip = !flip;
                         continue;
                     }
 
                     if (!flip) {
-                        // even tri: use natural order
-                        tris.push_back({
-                            i0,
-                            i1,
-                            i2,
-                            vertices[i0],
-                            vertices[i1],
-                            vertices[i2]
-                        });
+                        // Even: Natural order
+                        result.push_back(i0);
+                        result.push_back(i1);
+                        result.push_back(i2);
                     } else {
-                        // odd tri: flip winding
-                        tris.push_back({
-                            i1,
-                            i0,
-                            i2,
-                            vertices[i1],
-                            vertices[i0],
-                            vertices[i2]
-                        });
+                        // Odd: Flip winding order
+                        result.push_back(i1);
+                        result.push_back(i0);
+                        result.push_back(i2);
                     }
 
                     flip = !flip;
                 }
 
-                return tris;
-            }
-
-            std::vector<Triangle> toTriangleList(){
-                if (primitive == PrimitiveType::Triangles) {
-                    return toTriangleListFromTriangles();
-                } else {
-                    return toTriangleListFromTriangleStrip();
-                }
+                return result;
             }
 
             void setName(std::string newName){
@@ -530,5 +504,38 @@ namespace dsts::geom
             }
         }
         return false;
+    }
+
+    std::string getAtype(const binary::MeshAttribute &m){
+        switch (m.atype) {
+            case Atype::Position: return "position";
+            case Atype::Normal:   return "normal";
+            case Atype::Tangent:  return "tangent";
+            case Atype::Binormal: return "binormal";
+            case Atype::UV1:      return "uv1";
+            case Atype::UV2:      return "uv2";
+            case Atype::UV3:      return "uv3";
+            case Atype::unk_8:    return "unk_8";
+            case Atype::Color:    return "color";
+            case Atype::Index:    return "index";
+            case Atype::Weight:   return "weight";
+            default: return "";
+        }
+    }
+
+    std::string getDtype(const binary::MeshAttribute &m){
+        switch (m.dtype) {
+            case Dtype::uByte:          return "uByte";
+            case Dtype::sByte:          return "sByte";
+            case Dtype::uShort:         return "uShort";
+            case Dtype::sShort:         return "sShort";
+            case Dtype::uInt:           return "uInt";
+            case Dtype::sInt:           return "sInt";
+            case Dtype::Float:
+            case Dtype::Float_alias:    return "float";
+            case Dtype::Float16:
+            case Dtype::Float16_alias:  return "float16";
+            default: return "";
+        }
     }
 }

@@ -54,7 +54,7 @@ class MY_OT_dsts_geom_import_operator(Operator, ImportHelper):
             blender_materials[mat_data.name] = mat
 
         for mesh_obj in geom.meshes:
-            bl_mesh = mesh.build_blender_mesh(mesh_obj, utils.unflop)
+            bl_mesh = mesh.build_blender_mesh(mesh_obj)
             obj = bpy.data.objects.new(mesh_obj.name, bl_mesh)
 
             if mesh_obj.material:

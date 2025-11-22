@@ -160,6 +160,12 @@ void bind_mesh(py::module_ &m) {
     py::bind_vector<std::vector<Vertex>>(m, "VertexList");
     py::bind_vector<std::vector<uint16_t>>(m, "IndexList");
 
+    py::class_<MeshAttribute>(m, "MeshAttribute")
+        .def_readonly("count", &MeshAttribute::count)
+        .def_readonly("offset", &MeshAttribute::offset)
+        .def_property_readonly("atype", [](const MeshAttribute &m){return getAtype(m);})
+        .def_property_readonly("dtype", [](const MeshAttribute &m){return getDtype(m);});
+
     py::class_<Mesh>(m, "Mesh")
         .def(py::init<>())
         .def_property(
@@ -192,6 +198,11 @@ void bind_mesh(py::module_ &m) {
             make_vector_property(&Mesh::matrix_palette).second
         )
         .def_readwrite("material", &Mesh::material)
-        .def("to_triangle_list", &Mesh::toTriangleList)
+        .def("get_indices", &Mesh::get_indices_as_triangle_list)
+        .def("pack_vertices", [](const Mesh &m) {
+            auto result = buildMeshAttributes(m.vertices);
+            std::string packed = packVertices(result.attributes, m.vertices, result.totalSizeBytes);
+            return std::make_tuple(result.attributes, result.totalSizeBytes, py::bytes(packed));
+        })
         .def("__repr__",[](const Mesh &m){ return "<Mesh :"+ m.name +">";});
 }
