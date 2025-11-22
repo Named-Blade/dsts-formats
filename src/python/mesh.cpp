@@ -15,31 +15,40 @@ PYBIND11_MAKE_OPAQUE(std::vector<uint16_t>)
 
 // ---------- Convert InlineVec → NumPy array ----------
 struct AttributeToNumpy {
+    py::object owner;
+
+    AttributeToNumpy(py::object owner_) : owner(std::move(owner_)) {}
+
     py::object operator()(const std::monostate&) const {
         return py::none();
     }
 
     template <typename VecT>
     py::object operator()(const VecT& vec) const {
-        // FIX: strictly remove 'const', 'volatile', and pointers to get the raw type
-        using T = std::remove_cv_t<std::remove_pointer_t<decltype(vec.data())>>;
+        using RawT = std::remove_cv_t<std::remove_pointer_t<decltype(vec.data())>>;
 
-        if constexpr (std::is_same_v<T, float16>) {
-            // Explicitly handle float16
+        // shape and strides
+        std::vector<size_t> shape = { static_cast<size_t>(vec.size()) };
+        std::vector<size_t> strides = { static_cast<size_t>(sizeof(RawT)) };
+
+        if constexpr (std::is_same_v<RawT, float16>) {
+            // For float16 we treat the underlying storage as uint16_t
+            auto data_ptr = reinterpret_cast<const uint16_t*>(vec.data());
+            // dtype "e" is NumPy half — pybind11 accepts dtype string
             return py::array(
-                py::dtype("e"), // NumPy 'half' float
-                vec.size(),     // Shape
-                reinterpret_cast<const uint16_t*>(vec.data()) // Cast to raw uint16 data
-                // NOTE: We do NOT pass a 'base' object here. 
-                // Since InlineVec is stack memory inside Vertex, we MUST let NumPy 
-                // copy the data. It cannot view the memory directly safely.
+                py::dtype("e"),
+                shape,
+                strides,
+                const_cast<uint16_t*>(data_ptr), // py::array takes non-const void*
+                owner // owner keeps the parent (and thus the memory) alive
             );
         } else {
-            // Standard types (float, int, etc.)
             return py::array(
-                py::dtype::of<T>(),
-                vec.size(),
-                vec.data()
+                py::dtype::of<RawT>(),
+                shape,
+                strides,
+                const_cast<RawT*>(vec.data()),
+                owner
             );
         }
     }
@@ -119,8 +128,8 @@ void assign_numpy(VertexAttribute& attr, const py::object& obj) {
 }
 
 // Convenience wrapper
-static py::object to_numpy(const VertexAttribute& a) {
-    return std::visit(AttributeToNumpy{}, a.data);
+static py::object to_numpy(py::object self, const VertexAttribute& a) {
+    return std::visit(AttributeToNumpy(self), a.data);
 }
 
 // ---------- Property Binder Helper ----------
@@ -128,18 +137,19 @@ template <typename VertexType, typename MemberType>
 void def_vertex_property(py::class_<VertexType>& cls, const char* name, MemberType VertexType::*member) {
     cls.def_property(
         name,
-        [member](const VertexType& v) {
-            return to_numpy(v.*member);
+        // Getter
+        [member](py::object py_self) {
+            auto& v = py_self.cast<VertexType&>();
+            return to_numpy(py_self, v.*member);
         },
+        // Setter
         [member](VertexType& v, py::object a) {
-            // Case 1: Assigning another VertexAttribute object
             if constexpr (std::is_same_v<MemberType, VertexAttribute>) {
                 if (py::isinstance<VertexAttribute>(a)) {
                     v.*member = a.cast<VertexAttribute>();
                     return;
                 }
             }
-            // Case 2: Assigning a NumPy array (or list)
             assign_numpy(v.*member, a);
         }
     );
@@ -158,7 +168,7 @@ void bind_mesh(py::module_ &m) {
     py::class_<VertexAttribute>(m, "VertexAttribute")
         .def(py::init<>())
         .def(py::init<std::string, size_t>()) // e.g. VertexAttribute("float", 3)
-        .def("as_numpy", [](const VertexAttribute& a) { return to_numpy(a); })
+        .def("as_numpy", [](py::object self, const VertexAttribute& a) { return to_numpy(self, a); })
         .def("assign",   [](VertexAttribute& a, py::object v) { assign_numpy(a, v); })
         .def("is_empty", &VertexAttribute::isEmpty);
 
