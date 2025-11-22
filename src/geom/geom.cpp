@@ -171,15 +171,16 @@ namespace dsts::geom
 
                     if (meshHeaders[i].vertex_groups_per_vertex == 0) {
                         for (auto &v : mesh.vertices) {
-                            v.index.data  = std::vector<uint8_t>{0};
-                            v.weight.data = std::vector<float16>{(float16)1.0};
+                            v.index.data  = InlineVec<uint8_t>{0};
+                            v.weight.data = InlineVec<float16>{(float16)1.0f};
                         }   
                     }
                     else if (meshHeaders[i].vertex_groups_per_vertex == 1) {
                         for (auto &v : mesh.vertices) {
-                            auto pos = std::get<std::vector<float>>(v.position.data);
-                            v.index.data  = std::vector<uint8_t>{(uint8_t)pos[3]};
-                            v.weight.data = std::vector<float16>{(float16)1.0};
+                            const auto& pos = std::get<InlineVec<float>>(v.position.data);
+                            uint8_t extractedIndex = (uint8_t)pos[3];
+                            v.index.data  = InlineVec<uint8_t>{extractedIndex};
+                            v.weight.data = InlineVec<float16>{(float16)1.0f};
                         }   
                     }
 
@@ -191,7 +192,7 @@ namespace dsts::geom
                     std::vector<std::array<float, 3>> pos;
                     pos.reserve(mesh.vertices.size());
                     for (const auto& vertex : mesh.vertices) {
-                        const auto& floats = std::get<std::vector<float>>(vertex.position.data);
+                        const auto& floats = std::get<InlineVec<float>>(vertex.position.data);
                         pos.emplace_back(std::array<float, 3>{floats[0], floats[1], floats[2]});
                     }
                     BoundingInfo info = calculateBoundingInfo<float>(pos);
@@ -207,7 +208,7 @@ namespace dsts::geom
                     std::vector<std::array<float, 3>> pos_list;
                     for (const auto &mesh : meshes) {
                         for (const auto &vertex : mesh.vertices){
-                            const auto& floats = std::get<std::vector<float>>(vertex.position.data);
+                            const auto& floats = std::get<InlineVec<float>>(vertex.position.data);
                             pos_list.emplace_back(std::array<float, 3>{floats[0], floats[1], floats[2]});
                         }
                     }
@@ -406,8 +407,8 @@ namespace dsts::geom
                         if (vertexGroupCount == 1) {
                             if (mesh.matrix_palette.size() > 1) {
                                 for (auto &v : vertexCopy) {
-                                    auto& pos = std::get<std::vector<float>>(v.position.data);
-                                    auto& index = std::get<std::vector<uint8_t>>(v.index.data);
+                                    auto& pos = std::get<InlineVec<float>>(v.position.data);
+                                    auto& index = std::get<InlineVec<uint8_t>>(v.index.data);
 
                                     pos.resize(4);
                                     pos[3] = index[0];
@@ -459,7 +460,7 @@ namespace dsts::geom
                     std::vector<std::array<float, 3>> pos;
                     pos.reserve(vertexCopy.size());
                     for (const auto& vertex : vertexCopy) {
-                        const auto& floats = std::get<std::vector<float>>(vertex.position.data);
+                        const auto& floats = std::get<InlineVec<float>>(vertex.position.data);
                         pos.emplace_back(std::array<float, 3>{floats[0], floats[1], floats[2]});
                         pos_all.emplace_back(std::array<float, 3>{floats[0], floats[1], floats[2]});
                     }

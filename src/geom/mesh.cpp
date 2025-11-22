@@ -18,120 +18,93 @@
 
 namespace dsts::geom
 {
+    template <typename T, size_t Cap = 4>
+    class InlineVec {
+    public:
+        InlineVec() = default;
+        InlineVec(size_t count) : m_size(static_cast<uint8_t>(count)) { assert(count <= Cap); }
+
+        InlineVec(std::initializer_list<T> init) {
+            assert(init.size() <= Cap);
+            m_size = static_cast<uint8_t>(init.size());
+            std::copy(init.begin(), init.end(), m_data);
+        }
+
+        T* data() { return m_data; }
+        const T* data() const { return m_data; }
+        size_t size() const { return m_size; }
+        void resize(size_t n) { assert(n <= Cap); m_size = static_cast<uint8_t>(n); }
+        
+        T& operator[](size_t i) { return m_data[i]; }
+        const T& operator[](size_t i) const { return m_data[i]; }
+
+    private:
+        T m_data[Cap];
+        uint8_t m_size = 0;
+    };
+
     using AttributeData = std::variant<
         std::monostate,
-        std::vector<uint8_t>,
-        std::vector<int8_t>,
-        std::vector<uint16_t>,
-        std::vector<int16_t>,
-        std::vector<uint32_t>,
-        std::vector<int32_t>,
-        std::vector<float>,
-        std::vector<float16>
+        InlineVec<uint8_t>,
+        InlineVec<int8_t>,
+        InlineVec<uint16_t>,
+        InlineVec<int16_t>,
+        InlineVec<uint32_t>,
+        InlineVec<int32_t>,
+        InlineVec<float>,
+        InlineVec<float16>
     >;
 
     class VertexAttribute {
-        public:
-            AttributeData data;
+    public:
+        AttributeData data;
 
-            VertexAttribute() = default;
+        VertexAttribute() = default;
 
-            VertexAttribute(std::string name, size_t count = 1) {
-                if (name == "float16") {
-                    data = std::vector<float16>(count);
-                }
-                if (name == "float" || name == "float32") {
-                    data = std::vector<float>(count);
-                }
-                if (name == "int8") {
-                    data = std::vector<int8_t>(count);
-                }
-                if (name == "uint8") {
-                    data = std::vector<uint8_t>(count);
-                }
-                if (name == "int16") {
-                    data = std::vector<int16_t>(count);
-                }
-                if (name == "uint16") {
-                    data = std::vector<uint16_t>(count);
-                }
-                if (name == "int32") {
-                    data = std::vector<int32_t>(count);
-                }
-                if (name == "uint32") {
-                    data = std::vector<uint32_t>(count);
-                }
-            }
+        // Keep existing constructor interface
+        VertexAttribute(std::string name, size_t count = 1) {
+            if (name == "float" || name == "float32") data = InlineVec<float>(count);
+            else if (name == "float16") data = InlineVec<float16>(count);
+            else if (name == "int8")    data = InlineVec<int8_t>(count);
+            else if (name == "uint8")   data = InlineVec<uint8_t>(count);
+            else if (name == "int16")   data = InlineVec<int16_t>(count);
+            else if (name == "uint16")  data = InlineVec<uint16_t>(count);
+            else if (name == "int32")   data = InlineVec<int32_t>(count);
+            else if (name == "uint32")  data = InlineVec<uint32_t>(count);
+        }
+        
+        bool isEmpty() const { return std::holds_alternative<std::monostate>(data); }
 
-            VertexAttribute(const binary::MeshAttribute& desc,
-                            const uint8_t* basePtr)
-            {
-                const uint8_t* ptr = basePtr + desc.offset;
-
-                switch (desc.dtype) {
-                    case binary::Dtype::uByte:   data = loadVecMem<uint8_t>(ptr, desc.count); break;
-                    case binary::Dtype::sByte:   data = loadVecMem<int8_t>(ptr, desc.count); break;
-                    case binary::Dtype::uShort:  data = loadVecMem<uint16_t>(ptr, desc.count); break;
-                    case binary::Dtype::sShort:  data = loadVecMem<int16_t>(ptr, desc.count); break;
-                    case binary::Dtype::uInt:    data = loadVecMem<uint32_t>(ptr, desc.count); break;
-                    case binary::Dtype::sInt:    data = loadVecMem<int32_t>(ptr, desc.count); break;
-                    case binary::Dtype::Float:
-                    case binary::Dtype::Float_alias:
-                                                data = loadVecMem<float>(ptr, desc.count); break;
-                    case binary::Dtype::Float16:
-                    case binary::Dtype::Float16_alias:
-                                                data = loadVecMem<float16>(ptr, desc.count); break;
-                    default: assert(false);
-                }
-            }
-
-            bool isEmpty() const { return std::holds_alternative<std::monostate>(data); }
-
-        private:
-            template<typename T>
-            std::vector<T> loadVecMem(const uint8_t* ptr, size_t count) {
-                std::vector<T> out(count);
-                memcpy(out.data(), ptr, count * sizeof(T));
-                return out;
-            }
+        // Helper to directly write memory without reallocation
+        template <typename T>
+        void setFromPtr(const uint8_t* ptr, size_t count) {
+            // Emplace construct the InlineVec variant
+            data.emplace<InlineVec<T>>(count);
+            // Get pointer to the data we just created
+            auto& vec = std::get<InlineVec<T>>(data);
+            memcpy(vec.data(), ptr, count * sizeof(T));
+        }
     };
 
     class Vertex {
-        public:
-            VertexAttribute position;
-            VertexAttribute normal;
-            VertexAttribute tangent;
-            VertexAttribute binormal;
-            VertexAttribute uv1;
-            VertexAttribute uv2;
-            VertexAttribute uv3;
-            VertexAttribute unk_8;
-            VertexAttribute color;
-            VertexAttribute index;
-            VertexAttribute weight;
+    public:
+        // Interface remains exactly the same
+        VertexAttribute position;
+        VertexAttribute normal;
+        VertexAttribute tangent;
+        VertexAttribute binormal;
+        VertexAttribute uv1;
+        VertexAttribute uv2;
+        VertexAttribute uv3;
+        VertexAttribute unk_8;
+        VertexAttribute color;
+        VertexAttribute index;
+        VertexAttribute weight;
 
-            Vertex() = default;
+        Vertex() = default;
 
-            Vertex(const uint8_t* vertexBuffer,
-                const std::vector<binary::MeshAttribute>& attributes)
-            {
-                for (const auto& desc : attributes) {
-                    switch (desc.atype) {
-                    case Atype::Position: position = VertexAttribute(desc, vertexBuffer); break;
-                    case Atype::Normal:   normal   = VertexAttribute(desc, vertexBuffer); break;
-                    case Atype::Tangent:  tangent  = VertexAttribute(desc, vertexBuffer); break;
-                    case Atype::Binormal: binormal = VertexAttribute(desc, vertexBuffer); break;
-                    case Atype::UV1:      uv1      = VertexAttribute(desc, vertexBuffer); break;
-                    case Atype::UV2:      uv2      = VertexAttribute(desc, vertexBuffer); break;
-                    case Atype::UV3:      uv3      = VertexAttribute(desc, vertexBuffer); break;
-                    case Atype::unk_8:    unk_8    = VertexAttribute(desc, vertexBuffer); break;
-                    case Atype::Color:    color    = VertexAttribute(desc, vertexBuffer); break;
-                    case Atype::Index:    index    = VertexAttribute(desc, vertexBuffer); break;
-                    case Atype::Weight:   weight   = VertexAttribute(desc, vertexBuffer); break;
-                    default: assert(false);
-                    }
-                }
-            }
+        // Optimization: Removed the heavy parsing constructor.
+        // Logic is moved to unpackVertices for O(1) setup cost per vertex.
     };
 
     struct Triangle {
@@ -297,16 +270,16 @@ namespace dsts::geom
     return std::visit([](auto&& arg) -> binary::Dtype {
         using T = std::decay_t<decltype(arg)>;
 
-        if constexpr (std::is_same_v<T, std::vector<uint8_t>>)   return binary::Dtype::uByte;
-        if constexpr (std::is_same_v<T, std::vector<int8_t>>)    return binary::Dtype::sByte;
-        if constexpr (std::is_same_v<T, std::vector<uint16_t>>)  return binary::Dtype::uShort;
-        if constexpr (std::is_same_v<T, std::vector<int16_t>>)   return binary::Dtype::sShort;
-        if constexpr (std::is_same_v<T, std::vector<uint32_t>>)  return binary::Dtype::uInt;
-        if constexpr (std::is_same_v<T, std::vector<int32_t>>)   return binary::Dtype::sInt;
-        if constexpr (std::is_same_v<T, std::vector<float>>)     return binary::Dtype::Float_alias;
-        if constexpr (std::is_same_v<T, std::vector<float16>>)   return binary::Dtype::Float16_alias;
-        if constexpr (std::is_same_v<T, std::monostate>)         return binary::Dtype::Float;
-        return Dtype::Float; // unused
+        if constexpr (std::is_same_v<T, InlineVec<uint8_t>>)   return binary::Dtype::uByte;
+        if constexpr (std::is_same_v<T, InlineVec<int8_t>>)    return binary::Dtype::sByte;
+        if constexpr (std::is_same_v<T, InlineVec<uint16_t>>)  return binary::Dtype::uShort;
+        if constexpr (std::is_same_v<T, InlineVec<int16_t>>)   return binary::Dtype::sShort;
+        if constexpr (std::is_same_v<T, InlineVec<uint32_t>>)  return binary::Dtype::uInt;
+        if constexpr (std::is_same_v<T, InlineVec<int32_t>>)   return binary::Dtype::sInt;
+        if constexpr (std::is_same_v<T, InlineVec<float>>)     return binary::Dtype::Float_alias;
+        if constexpr (std::is_same_v<T, InlineVec<float16>>)   return binary::Dtype::Float16_alias;
+        if constexpr (std::is_same_v<T, std::monostate>)       return binary::Dtype::Float;
+        assert(false);
     }, data);
     }
 
@@ -436,7 +409,7 @@ namespace dsts::geom
 
             binary::MeshAttribute desc;
             desc.atype = at;
-            desc.count = std::visit([&getCount](auto&& vec){ return getCount(vec); }, attr->data);
+            desc.count = getCount(attr->data);
             desc.dtype = deduceDtype(attr->data);
 
             // *** New: ensure 4-byte alignment ***
@@ -454,47 +427,156 @@ namespace dsts::geom
         return out;
     }
 
+    struct AttributeJob {
+        size_t offset;          // Offset in the vertex buffer
+        size_t count;           // Number of elements (1-4)
+        binary::Dtype dtype;    // Data type
+        VertexAttribute Vertex::* member; // Pointer to the class member
+    };
+
     void unpackVertices(
         std::vector<Vertex> &vertices,
         const std::vector<binary::MeshAttribute>& descriptors,
-        const std::string packedVertices,
+        const std::string& packedVertices, 
         size_t vertexStride
     ) {
-        if (vertices.size() > 0) vertices.clear();
-        size_t count = packedVertices.size() / vertexStride;
-        vertices.reserve(count);
-        for (size_t i = 0; i < count; i++) {
-            const uint8_t* vptr = reinterpret_cast<const uint8_t*>(packedVertices.data()) + vertexStride * i;
-            vertices.emplace_back(vptr, descriptors);
+        if (!vertices.empty()) vertices.clear();
+        
+        size_t vertexCount = packedVertices.size() / vertexStride;
+        vertices.resize(vertexCount);
+
+        // --- PRE-CALCULATION STEP ---
+        // Analyze descriptors ONCE, not per vertex.
+        // We create a list of "jobs" to do for each vertex.
+        std::vector<AttributeJob> jobs;
+        jobs.reserve(descriptors.size());
+
+        for (const auto& desc : descriptors) {
+            VertexAttribute Vertex::* targetMember = nullptr;
+
+            switch (desc.atype) {
+                case Atype::Position: targetMember = &Vertex::position; break;
+                case Atype::Normal:   targetMember = &Vertex::normal; break;
+                case Atype::Tangent:  targetMember = &Vertex::tangent; break;
+                case Atype::Binormal: targetMember = &Vertex::binormal; break;
+                case Atype::UV1:      targetMember = &Vertex::uv1; break;
+                case Atype::UV2:      targetMember = &Vertex::uv2; break;
+                case Atype::UV3:      targetMember = &Vertex::uv3; break;
+                case Atype::unk_8:    targetMember = &Vertex::unk_8; break;
+                case Atype::Color:    targetMember = &Vertex::color; break;
+                case Atype::Index:    targetMember = &Vertex::index; break;
+                case Atype::Weight:   targetMember = &Vertex::weight; break;
+                default: continue; 
+            }
+
+            if (targetMember) {
+                jobs.push_back({ desc.offset, desc.count, desc.dtype, targetMember });
+            }
+        }
+
+        // --- BATCH PROCESSING STEP ---
+        const uint8_t* streamStart = reinterpret_cast<const uint8_t*>(packedVertices.data());
+
+        for (size_t i = 0; i < vertexCount; ++i) {
+            Vertex& v = vertices[i];
+            const uint8_t* vertexPtr = streamStart + (i * vertexStride);
+
+            // Unroll the jobs for this specific vertex
+            for (const auto& job : jobs) {
+                const uint8_t* dataPtr = vertexPtr + job.offset;
+                VertexAttribute& attr = v.*(job.member); // Access member via pointer
+
+                // Direct dispatch based on type
+                switch (job.dtype) {
+                    case binary::Dtype::uByte:         attr.setFromPtr<uint8_t>(dataPtr, job.count); break;
+                    case binary::Dtype::sByte:         attr.setFromPtr<int8_t>(dataPtr, job.count); break;
+                    case binary::Dtype::uShort:        attr.setFromPtr<uint16_t>(dataPtr, job.count); break;
+                    case binary::Dtype::sShort:        attr.setFromPtr<int16_t>(dataPtr, job.count); break;
+                    case binary::Dtype::uInt:          attr.setFromPtr<uint32_t>(dataPtr, job.count); break;
+                    case binary::Dtype::sInt:          attr.setFromPtr<int32_t>(dataPtr, job.count); break;
+                    case binary::Dtype::Float:
+                    case binary::Dtype::Float_alias:   attr.setFromPtr<float>(dataPtr, job.count); break;
+                    case binary::Dtype::Float16:
+                    case binary::Dtype::Float16_alias: attr.setFromPtr<float16>(dataPtr, job.count); break;
+                    default: break; 
+                }
+            }
         }
     }
 
     std::string packVertices(
         const std::vector<binary::MeshAttribute>& descriptors,
         const std::vector<Vertex>& vertices,
-        size_t vertexStride)   // total size per vertex (including padding)
+        size_t vertexStride)
     {
+        if (vertices.empty()) return "";
+
+        // 1. Pre-allocate buffer (zero-init to handle padding bytes cleanly)
         std::string buffer;
-        buffer.resize(vertexStride * vertices.size(), '\0'); // preallocate
+        buffer.resize(vertexStride * vertices.size(), 0);
+        
+        // Get raw pointer to beginning of buffer for fast pointer arithmetic
+        uint8_t* bufferStart = reinterpret_cast<uint8_t*>(buffer.data());
 
-        for (size_t vi = 0; vi < vertices.size(); ++vi) {
-            const Vertex& v = vertices[vi];
-            uint8_t* base = reinterpret_cast<uint8_t*>(&buffer[vi * vertexStride]);
+        // 2. PRE-CALCULATION (Job Hoisting)
+        // Map descriptors to member pointers ONCE.
+        // This avoids the switch statement running inside the vertex loop.
+        struct PackJob {
+            size_t offset;
+            VertexAttribute Vertex::* member;
+        };
 
-            for (const auto& desc : descriptors) {
-                const VertexAttribute* attr = getAttributeByType(v, desc.atype);
-                if (!attr || attr->isEmpty())
-                    continue;
+        std::vector<PackJob> jobs;
+        jobs.reserve(descriptors.size());
 
-                // copy memory depending on variant type
+        for (const auto& desc : descriptors) {
+            VertexAttribute Vertex::* targetMember = nullptr;
+            switch (desc.atype) {
+                case Atype::Position: targetMember = &Vertex::position; break;
+                case Atype::Normal:   targetMember = &Vertex::normal; break;
+                case Atype::Tangent:  targetMember = &Vertex::tangent; break;
+                case Atype::Binormal: targetMember = &Vertex::binormal; break;
+                case Atype::UV1:      targetMember = &Vertex::uv1; break;
+                case Atype::UV2:      targetMember = &Vertex::uv2; break;
+                case Atype::UV3:      targetMember = &Vertex::uv3; break;
+                case Atype::unk_8:    targetMember = &Vertex::unk_8; break;
+                case Atype::Color:    targetMember = &Vertex::color; break;
+                case Atype::Index:    targetMember = &Vertex::index; break;
+                case Atype::Weight:   targetMember = &Vertex::weight; break;
+                default: continue;
+            }
+            if (targetMember) {
+                jobs.push_back({ desc.offset, targetMember });
+            }
+        }
+
+        // 3. PROCESSING LOOP
+        for (size_t i = 0; i < vertices.size(); ++i) {
+            const Vertex& v = vertices[i];
+            uint8_t* vertexBase = bufferStart + (i * vertexStride);
+
+            for (const auto& job : jobs) {
+                // Fast access using the pre-calculated member pointer
+                const VertexAttribute& attr = v.*(job.member);
+
+                if (attr.isEmpty()) continue;
+
+                // Visit the variant (now holding InlineVec)
                 std::visit([&](auto&& vec) {
                     using T = std::decay_t<decltype(vec)>;
+
                     if constexpr (std::is_same_v<T, std::monostate>) {
-                        // do nothing
+                        return; 
                     } else {
-                        memcpy(base + desc.offset, vec.data(), vec.size() * sizeof(typename T::value_type));
+                        // vec is InlineVec<Type>.
+                        // We use *vec.data() to deduce the inner type size.
+                        size_t bytesToCopy = vec.size() * sizeof(*vec.data());
+                        
+                        // Safety check (optional, depending on trust of data)
+                        // if (job.offset + bytesToCopy <= vertexStride) 
+                        memcpy(vertexBase + job.offset, vec.data(), bytesToCopy);
                     }
-                }, attr->data);
+                }, attr.data);
             }
         }
 
