@@ -104,6 +104,52 @@ def import_mesh_object(bl_mesh: dsts_formats.Mesh, armature_obj, materials_dict,
                 uv_layer = mesh_data.uv_layers.new(name=uv_name)
                 uv_layer.data.foreach_set("uv", uv_data[loop_v_idxs].reshape(-1))
 
+    # --- VERTEX COLORS (Color Attributes) ---
+    if faces.size > 0:
+        # The loop_v_idxs array is already retrieved above for UVs, 
+        # but we check again for robustness in case UVs section is skipped.
+        if 'loop_v_idxs' not in locals():
+             loop_v_idxs = np.zeros(len(mesh_data.loops), dtype=np.int32)
+             mesh_data.loops.foreach_get("vertex_index", loop_v_idxs)
+
+        # Assuming the vertex color attribute is named 'color' in the source data.
+        if "color" in attr_map:
+            color_attr = attr_map["color"]
+            color_data = extract_attribute(packed, stride, num_verts, color_attr)
+            
+            # Ensure color data has 4 components (RGBA) for Blender, padding with alpha=1.0 if necessary
+            # Color attributes in Blender are typically 4-component (RGBA) float or byte.
+            if color_attr.count == 3:
+                # Pad with 1.0 alpha
+                alpha_channel = np.ones((num_verts, 1), dtype=color_data.dtype)
+                color_data = np.hstack((color_data, alpha_channel))
+            elif color_attr.count < 3:
+                print(f"Warning: Vertex color attribute 'color' has less than 3 components ({color_attr.count}), skipping.")
+                return obj
+
+            # Normalize uByte/uShort data to float if necessary for Blender's color layer
+            if color_data.dtype == np.uint8:
+                color_data = color_data.astype(np.float32) / 255.0
+            elif color_data.dtype == np.uint16:
+                 color_data = color_data.astype(np.float32) / 65535.0
+            
+            # Create a new color attribute on the mesh (Blender 3.x API)
+            # Setting 'color' as the attribute name. 
+            # type='FLOAT_COLOR' for float data (which we normalized to)
+            color_layer = mesh_data.color_attributes.new(
+                name='Color', 
+                type='FLOAT_COLOR', 
+                domain='CORNER' # Color is typically per-face-corner (loop)
+            )
+            
+            # The data is per vertex, but the color layer data is per loop (face corner).
+            # We map the per-vertex data to the per-loop indices.
+            # Blender expects a flattened array of RGBA values.
+            loop_colors = color_data[loop_v_idxs].reshape(-1)
+
+            # Set the data for the new color attribute
+            color_layer.data.foreach_set("color", loop_colors)
+    
     # --- OBJECT ---
     obj = bpy.data.objects.new(bl_mesh.name, mesh_data)
     collection.objects.link(obj)
@@ -158,6 +204,97 @@ def import_mesh_object(bl_mesh: dsts_formats.Mesh, armature_obj, materials_dict,
                 bone_name = palette_map[palette_idx]
                 obj.vertex_groups[bone_name].add([int(valid_v_ids[i])], float(valid_weights[i]), 'ADD')
 
+    # --- TANGENTS: Compute & Compare ---
+    if "tangent" in attr_map and mesh_data.uv_layers:
+        # Blender needs tangents enabled
+        mesh_data.calc_tangents()
+
+        # Extract custom packed tangents
+        packed_tangents = extract_attribute(packed, stride, num_verts, attr_map["tangent"])
+        if coord_transform and isinstance(coord_transform, Matrix):
+            mat_rot = np.array(coord_transform)[:3, :3]
+            if packed_tangents.shape[1] == 4:
+                packed_tan_xyz = packed_tangents[:, :3]
+                packed_tan_w   = packed_tangents[:, 3]
+            else:
+                packed_tan_xyz = packed_tangents
+                packed_tan_w   = None
+
+            # Apply coord transform (just like normals)
+            if coord_transform and isinstance(coord_transform, Matrix):
+                mat_rot = np.array(coord_transform)[:3, :3]
+                packed_tan_xyz = packed_tan_xyz @ mat_rot.T
+
+            # Re-normalize (safety)
+            lens = np.linalg.norm(packed_tan_xyz, axis=1, keepdims=True)
+            lens[lens == 0] = 1
+            packed_tan_xyz /= lens
+
+            # Recombine if w exists
+            if packed_tan_w is not None:
+                packed_tangents = np.column_stack([packed_tan_xyz, packed_tan_w])
+            else:
+                packed_tangents = packed_tan_xyz
+
+        # In many engines, tangent.w stores the sign (±1) used with bitangent reconstruction
+        has_w = packed_tangents.shape[1] == 4
+        packed_tan_xyz = packed_tangents[:, :3]
+        packed_tan_w = packed_tangents[:, 3] if has_w else None
+
+        # Prepare loop mappings
+        loop_vertex_indices = np.zeros(len(mesh_data.loops), dtype=np.int32)
+        mesh_data.loops.foreach_get("vertex_index", loop_vertex_indices)
+
+        # Blender loop tangents
+        bl_tangents = np.zeros((len(mesh_data.loops), 3), dtype=np.float32)
+        mesh_data.loops.foreach_get("tangent", bl_tangents.ravel())
+
+        # Blender bitangent sign
+        bl_bitangent_signs = np.zeros(len(mesh_data.loops), dtype=np.float32)
+        mesh_data.loops.foreach_get("bitangent_sign", bl_bitangent_signs)
+
+        # Build per-vertex tangent average (Blender's data is loop-based)
+        accum = np.zeros((num_verts, 3), dtype=np.float32)
+        counts = np.zeros(num_verts, dtype=np.int32)
+
+        for i, v in enumerate(loop_vertex_indices):
+            accum[v] += bl_tangents[i]
+            counts[v] += 1
+
+        # Avoid division by zero
+        counts[counts == 0] = 1
+        averaged_bl_tangents = accum / counts[:, None]
+
+        # Normalize
+        lens = np.linalg.norm(averaged_bl_tangents, axis=1, keepdims=True)
+        lens[lens == 0] = 1
+        averaged_bl_tangents /= lens
+
+        # --- Compare Packed vs Blender ---
+        diff = averaged_bl_tangents - packed_tan_xyz
+        errors = np.linalg.norm(diff, axis=1)
+
+        mean_err = float(np.mean(errors))
+        max_err = float(np.max(errors))
+        idx_max = int(np.argmax(errors))
+
+        print("\n--- Tangent Sanity Check ---")
+        print(f"Mean Error: {mean_err:.6f}")
+        print(f"Max Error : {max_err:.6f} (vertex {idx_max})")
+        print(f"Example:")
+        print(f"  Blender: {averaged_bl_tangents[idx_max]}")
+        print(f"  Packed : {packed_tan_xyz[idx_max]}")
+        print(f"  Δ      : {diff[idx_max]}")
+
+        if has_w:
+            print("\nBitangent sign check:")
+            # Compare signs at the loop level
+            packed_sign_per_loop = packed_tan_w[loop_vertex_indices]
+            sign_diff = np.abs(bl_bitangent_signs - packed_sign_per_loop)
+            mismatched_signs = np.sum(sign_diff > 0.1)
+            print(f"Mismatched bitangent signs: {mismatched_signs} / {len(mesh_data.loops)}")
+
+    
     # --- PARENTING ---
     if armature_obj:
         obj.parent = armature_obj

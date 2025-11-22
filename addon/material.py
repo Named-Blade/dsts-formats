@@ -35,6 +35,7 @@ def resolve_material(mat, mat_data, tex_folder):
     y_step = -300
     y_offset = 0
 
+    diffuse_texture_found = False
     for uniform in mat_data.uniforms:
         if uniform.uniform_type != "texture":
             continue
@@ -48,6 +49,7 @@ def resolve_material(mat, mat_data, tex_folder):
 
         # Diffuse Color
         if uniform.parameter_name == "DiffuseColor":
+            diffuse_texture_found = True
             tex_node = nodes.new("ShaderNodeTexImage")
             tex_node.image = bpy.data.images.load(tex_path)
             tex_node.location = (base_x, base_y + y_offset)
@@ -71,3 +73,9 @@ def resolve_material(mat, mat_data, tex_folder):
             links.new(tex_node.outputs["Color"], normal_node.inputs["Color"])
             links.new(normal_node.outputs["Normal"], principled_node.inputs["Normal"])
             y_offset += y_step
+    
+    if not diffuse_texture_found:
+        attr_node = nodes.new("ShaderNodeAttribute")
+        attr_node.location = (-600, 0)
+        attr_node.attribute_name = "Color"
+        links.new(attr_node.outputs["Color"], principled_node.inputs["Base Color"])
