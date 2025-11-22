@@ -162,27 +162,12 @@ namespace dsts::geom
                     f.seekg(base + meshHeaders[i].attributes_offset);
                     f.read(reinterpret_cast<char*>(meshAttributes.data()), sizeof(binary::MeshAttribute) * meshHeaders[i].attribute_count);
 
-                    {
-                        const size_t vpv = meshHeaders[i].bytes_per_vertex;
-                        const size_t count = meshHeaders[i].vertex_count;
+                    size_t totalBytes =  meshHeaders[i].bytes_per_vertex *  meshHeaders[i].vertex_count;
+                    std::string allVertices(totalBytes, '\0');
+                    f.seekg(base + meshHeaders[i].vertices_offset);
+                    f.read((char*)allVertices.data(), totalBytes);
 
-                        // total bytes of the entire vertex block:
-                        size_t totalBytes = vpv * count;
-
-                        // read everything in one shot
-                        std::vector<uint8_t> allVertices(totalBytes);
-
-                        f.seekg(base + meshHeaders[i].vertices_offset);
-                        f.read((char*)allVertices.data(), totalBytes);
-
-                        // validate
-                        if (!f) throw std::runtime_error("Failed to read vertex buffer");
-
-                        for (size_t y = 0; y < count; y++) {
-                            const uint8_t* vptr = allVertices.data() + vpv * y;
-                            mesh.vertices.emplace_back(vptr, meshAttributes);
-                        }
-                    }
+                    unpackVertices(mesh.vertices, meshAttributes, allVertices,  meshHeaders[i].bytes_per_vertex);
 
                     if (meshHeaders[i].vertex_groups_per_vertex == 0) {
                         for (auto &v : mesh.vertices) {

@@ -204,5 +204,12 @@ void bind_mesh(py::module_ &m) {
             std::string packed = packVertices(result.attributes, m.vertices, result.totalSizeBytes);
             return std::make_tuple(result.attributes, result.totalSizeBytes, py::bytes(packed));
         })
+        .def("unpack_vertices", [](Mesh &m,
+            const std::vector<binary::MeshAttribute> &attributes, 
+            const size_t &vertexStride, 
+            const py::bytes &packedVertices
+        ){
+            unpackVertices(m.vertices, attributes, packedVertices, vertexStride);
+        })
         .def("__repr__",[](const Mesh &m){ return "<Mesh :"+ m.name +">";});
 }

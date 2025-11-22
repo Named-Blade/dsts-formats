@@ -454,6 +454,21 @@ namespace dsts::geom
         return out;
     }
 
+    void unpackVertices(
+        std::vector<Vertex> &vertices,
+        const std::vector<binary::MeshAttribute>& descriptors,
+        const std::string packedVertices,
+        size_t vertexStride
+    ) {
+        if (vertices.size() > 0) vertices.clear();
+        size_t count = packedVertices.size() / vertexStride;
+        vertices.reserve(count);
+        for (size_t i = 0; i < count; i++) {
+            const uint8_t* vptr = reinterpret_cast<const uint8_t*>(packedVertices.data()) + vertexStride * i;
+            vertices.emplace_back(vptr, descriptors);
+        }
+    }
+
     std::string packVertices(
         const std::vector<binary::MeshAttribute>& descriptors,
         const std::vector<Vertex>& vertices,
