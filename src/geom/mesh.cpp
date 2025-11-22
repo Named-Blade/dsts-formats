@@ -39,7 +39,7 @@ namespace dsts::geom
         const T& operator[](size_t i) const { return m_data[i]; }
 
     private:
-        T m_data[Cap];
+        T m_data[Cap]{};
         uint8_t m_size = 0;
     };
 

@@ -128,7 +128,7 @@ void assign_numpy(VertexAttribute& attr, const py::object& obj) {
 }
 
 // Convenience wrapper
-static py::object to_numpy(py::object self, const VertexAttribute& a) {
+static py::object to_numpy(py::object &self, const VertexAttribute& a) {
     return std::visit(AttributeToNumpy(self), a.data);
 }
 
@@ -138,7 +138,7 @@ void def_vertex_property(py::class_<VertexType>& cls, const char* name, MemberTy
     cls.def_property(
         name,
         // Getter
-        [member](py::object py_self) {
+        [member](py::object &py_self) {
             auto& v = py_self.cast<VertexType&>();
             return to_numpy(py_self, v.*member);
         },
@@ -167,8 +167,11 @@ void bind_mesh(py::module_ &m) {
     // VertexAttribute binding
     py::class_<VertexAttribute>(m, "VertexAttribute")
         .def(py::init<>())
-        .def(py::init<std::string, size_t>()) // e.g. VertexAttribute("float", 3)
-        .def("as_numpy", [](py::object self, const VertexAttribute& a) { return to_numpy(self, a); })
+        .def(py::init<std::string, size_t>())
+        .def("as_numpy", [](py::object self) {
+            VertexAttribute &attr = self.cast<VertexAttribute&>();
+            return to_numpy(self, attr);
+        })
         .def("assign",   [](VertexAttribute& a, py::object v) { assign_numpy(a, v); })
         .def("is_empty", &VertexAttribute::isEmpty);
 
