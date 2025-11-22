@@ -58,127 +58,115 @@ def extract_attribute(raw_bytes, stride, count, attr_meta, component_count=1):
 # ----------------------------------------------------------
 # Convert Mesh → Blender Mesh (Optimized)
 # ----------------------------------------------------------
-def build_blender_mesh(bl_mesh: dsts_formats.Mesh, coord_transform=Matrix.Rotation(math.radians(90), 4, 'X')):
-    
-    # 1. Get packed binary data from C++
-    # attributes: list of MeshAttribute objects
-    # stride: int (bytes per vertex)
-    # packed: bytes object
+def import_mesh_object(bl_mesh: dsts_formats.Mesh, armature_obj, materials_dict, collection, coord_transform=Matrix.Rotation(math.radians(90), 4, 'X')):
+    """
+    Creates a Blender Object with Mesh, Materials, and Weights using zero-copy optimization.
+    Includes Coordinate Transformation.
+    """
+    # 1. Unpack data once
     attributes, stride, packed = bl_mesh.pack_vertices()
-    
-    # Calculate vertex count based on buffer size
     num_verts = len(packed) // stride
-    
-    # Map attributes by name for easy access
     attr_map = {a.atype: a for a in attributes}
-    
-    # 2. Extract Positions (Essential for creating mesh)
-    if "position" in attr_map:
-        positions = extract_attribute(packed, stride, num_verts, attr_map["position"], 3)
-    else:
-        # Fallback if no positions (unlikely)
-        positions = np.zeros((num_verts, 3), dtype=np.float32)
 
-    # Apply Coordinate Transform (Optimized)
+    # --- GEOMETRY ---
+    # Extract raw positions (N, 3)
+    positions = extract_attribute(packed, stride, num_verts, attr_map["position"], 3)
+    
+    # --- APPLY TRANSFORM (Optimized) ---
     if coord_transform:
         if isinstance(coord_transform, Matrix):
-            # Fast matrix multiplication using numpy
-            # Convert mathutils Matrix to 4x4 numpy array
-            mat = np.array(coord_transform) 
-            # Apply rotation/scale (3x3 part) + translation
-            # P_new = P @ M_3x3 + T
+            # FAST: Numpy matrix multiplication
+            mat = np.array(coord_transform)
+            # 1. Rotate: P @ R_T (Transpose needed because vectors are rows in numpy shape N,3)
+            # 2. Translate: + T
             positions = positions @ mat[:3, :3].T + mat[:3, 3]
         else:
-            # Slow fallback for generic function transforms
-            # (It is better to ensure coord_transform is a Matrix passed in)
+            # SLOW: Fallback for custom functions
             vecs = [coord_transform(Vector(p)) for p in positions]
             positions = np.array(vecs, dtype=np.float32)
 
-    # 3. Extract Topology (Faces)
+    # Handle Indices
     flat_indices = bl_mesh.get_indices()
-    faces_np = np.array(flat_indices, dtype=np.int32)
-    faces = faces_np.reshape(-1, 3)
+    faces = np.array(flat_indices, dtype=np.int32).reshape(-1, 3)
 
-    # 4. Create Mesh Data
-    mesh = bpy.data.meshes.new(bl_mesh.name)
+    # Create Mesh
+    mesh_data = bpy.data.meshes.new(bl_mesh.name)
+    mesh_data.from_pydata(positions, [], faces)
     
-    # This is the fastest way to create geometry in Blender
-    mesh.from_pydata(positions, [], faces)
-    
-    # 5. Handle Normals
+    # --- NORMALS ---
     if "normal" in attr_map:
         normals = extract_attribute(packed, stride, num_verts, attr_map["normal"], 3)
         
+        # Apply Rotation to Normals (No translation)
         if coord_transform and isinstance(coord_transform, Matrix):
-            # Apply 3x3 rotation only (no translation for normals)
             mat_rot = np.array(coord_transform)[:3, :3]
             normals = normals @ mat_rot.T
-            # Normalize just in case scale skewed them
+            
+            # Re-normalize (fix scaling artifacts)
             norms = np.linalg.norm(normals, axis=1, keepdims=True)
-            # Avoid division by zero
-            norms[norms == 0] = 1
+            norms[norms == 0] = 1 # Prevent div by zero
             normals /= norms
             
-        mesh.normals_split_custom_set_from_vertices(normals)
+        mesh_data.normals_split_custom_set_from_vertices(normals)
     
-    mesh.update(calc_edges=True)
+    mesh_data.update(calc_edges=True)
 
-    # --- PREPARE FOR LOOP MAPPING ---
-    # Blender stores UVs and Colors on loops (face corners), C++ has them on vertices.
-    # We need to expand vertex data to loop data.
-    if "uv1" in attr_map or "color" in attr_map:
-        # Get vertex indices for all loops
-        # fast way to get loop indices:
-        loop_v_idxs = np.zeros(len(mesh.loops), dtype=np.int32)
-        mesh.loops.foreach_get("vertex_index", loop_v_idxs)
+    # --- UVs ---
+    if faces.size > 0:
+        loop_v_idxs = np.zeros(len(mesh_data.loops), dtype=np.int32)
+        mesh_data.loops.foreach_get("vertex_index", loop_v_idxs)
+        
+        for uv_name in ["uv1", "uv2", "uv3"]:
+            if uv_name in attr_map:
+                uv_data = extract_attribute(packed, stride, num_verts, attr_map[uv_name], 2)
+                uv_layer = mesh_data.uv_layers.new(name=uv_name)
+                uv_layer.data.foreach_set("uv", uv_data[loop_v_idxs].reshape(-1))
 
-    # 6. Handle UVs
-    for uv_name in ["uv1", "uv2", "uv3"]:
-        if uv_name in attr_map:
-            # Extract UVs (N, 2)
-            uv_data = extract_attribute(packed, stride, num_verts, attr_map[uv_name], 2)
-            
-            # Create Layer
-            uv_layer = mesh.uv_layers.new(name=uv_name)
-            
-            # Expand (N, 2) -> (NumLoops, 2) using numpy fancy indexing
-            loop_uvs = uv_data[loop_v_idxs]
-            
-            # Flatten to 1D array for foreach_set
-            uv_layer.data.foreach_set("uv", loop_uvs.reshape(-1))
+    # --- OBJECT CREATION ---
+    obj = bpy.data.objects.new(bl_mesh.name, mesh_data)
+    collection.objects.link(obj)
 
-    # 7. Handle Colors
-    if "color" in attr_map:
-        c_attr = attr_map["color"]
-        # Determine components (usually 3 or 4)
-        # Assuming 3 (RGB) based on original code, but could be 4 (RGBA)
-        # Let's try to deduce from dtype size or assume 3 if unclear. 
-        # Safe bet: Check if offset+size fits. Usually colors are 4 bytes (RGBA) or 3 floats.
-        # Based on original code `float(c[0])...float(c[2]), 1.0`, it implies input is likely RGB.
-        
-        # Let's assume 3 components for now based on your previous loop code
-        comp_count = 3 
-        col_data = extract_attribute(packed, stride, num_verts, c_attr, comp_count)
-        
-        # Normalize if uByte (0-255 -> 0.0-1.0)
-        if col_data.dtype == np.uint8:
-            col_data = col_data.astype(np.float32) / 255.0
-            
-        # Blender Color Attributes (ByteColor or FloatColor)
-        # Modern Blender uses vertex_colors (Byte) or color_attributes (Float)
-        # Let's use the standard vertex_colors
-        col_layer = mesh.vertex_colors.new(name="Col")
-        
-        # Expand Vertex Data -> Loop Data
-        loop_cols = col_data[loop_v_idxs]
-        
-        # If input was RGB, append Alpha=1.0
-        if loop_cols.shape[1] == 3:
-            ones = np.ones((len(loop_cols), 1), dtype=np.float32)
-            loop_cols = np.hstack((loop_cols, ones))
-            
-        col_layer.data.foreach_set("color", loop_cols.reshape(-1))
+    # Assign Material
+    if bl_mesh.material and bl_mesh.material.name in materials_dict:
+        obj.data.materials.append(materials_dict[bl_mesh.material.name])
 
-    # Final validation
-    mesh.validate()
-    return mesh
+    # --- WEIGHT ASSIGNMENT ---
+    if "index" in attr_map and "weight" in attr_map and armature_obj:
+        palette_map = {}
+        if bl_mesh.matrix_palette:
+            for idx, bone_data in enumerate(bl_mesh.matrix_palette):
+                if bone_data.name in armature_obj.data.bones:
+                    palette_map[idx] = bone_data.name
+                    if bone_data.name not in obj.vertex_groups:
+                        obj.vertex_groups.new(name=bone_data.name)
+
+        comp_count = 4 
+        idx_data = extract_attribute(packed, stride, num_verts, attr_map["index"], comp_count)
+        wgt_data = extract_attribute(packed, stride, num_verts, attr_map["weight"], comp_count)
+        
+        if wgt_data.dtype == np.uint8:
+            wgt_data = wgt_data.astype(np.float32) / 255.0
+
+        flat_weights = wgt_data.flatten()
+        flat_indices = idx_data.flatten()
+        flat_v_ids = np.repeat(np.arange(num_verts), comp_count)
+
+        mask = flat_weights > 0.001
+        
+        valid_weights = flat_weights[mask]
+        valid_bone_idxs = flat_indices[mask]
+        valid_v_ids = flat_v_ids[mask]
+
+        for i in range(len(valid_weights)):
+            palette_idx = valid_bone_idxs[i]
+            if palette_idx in palette_map:
+                bone_name = palette_map[palette_idx]
+                obj.vertex_groups[bone_name].add([int(valid_v_ids[i])], float(valid_weights[i]), 'ADD')
+
+    # --- PARENTING ---
+    if armature_obj:
+        obj.parent = armature_obj
+        mod = obj.modifiers.new(name="Armature", type='ARMATURE')
+        mod.object = armature_obj
+
+    return obj
