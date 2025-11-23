@@ -173,7 +173,12 @@ void bind_mesh(py::module_ &m) {
             return to_numpy(self, attr);
         })
         .def("assign",   [](VertexAttribute& a, py::object v) { assign_numpy(a, v); })
-        .def("is_empty", &VertexAttribute::isEmpty);
+        .def("is_empty", &VertexAttribute::isEmpty)
+        .def("__repr__", [](py::object& self) {
+            VertexAttribute &attr = self.cast<VertexAttribute&>();
+            auto np = to_numpy(self, attr);
+            return std::string("<VertexAttribute :") + py::repr(np).cast<std::string>() + ">";
+        });
 
     // Vertex binding
     py::class_<Vertex> pyVertex(m, "Vertex");
@@ -191,8 +196,10 @@ void bind_mesh(py::module_ &m) {
     def_vertex_property(pyVertex, "weight",   &Vertex::weight);
     
     // Add repr for debugging
-    pyVertex.def("__repr__", [](const Vertex& v) {
-        return std::string("<Vertex pos=") + (v.position.isEmpty() ? "None" : "Set") + ">";
+    pyVertex.def("__repr__", [](py::object& self) {
+        Vertex &v = self.cast<Vertex&>();
+        auto np = to_numpy(self, v.position);
+        return std::string("<Vertex pos=") + (v.position.isEmpty() ? "None" : py::repr(np).cast<std::string>()) + ">";
     });
 
     // Triangle binding
@@ -220,7 +227,10 @@ void bind_mesh(py::module_ &m) {
         .def_readonly("count", &MeshAttribute::count)
         .def_readonly("offset", &MeshAttribute::offset)
         .def_property_readonly("atype", [](const MeshAttribute &m){return getAtype(m);})
-        .def_property_readonly("dtype", [](const MeshAttribute &m){return getDtype(m);});
+        .def_property_readonly("dtype", [](const MeshAttribute &m){return getDtype(m);})
+        .def("__repr__", [](const MeshAttribute &m){
+            return "<MeshAttribute: "+ getAtype(m) +">";
+        });
 
     // Mesh binding
     py::class_<Mesh>(m, "Mesh")
