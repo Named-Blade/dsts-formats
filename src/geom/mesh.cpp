@@ -77,7 +77,7 @@ namespace dsts::geom
 
         // Helper to directly write memory without reallocation
         template <typename T>
-        void setFromPtr(const uint8_t* ptr, size_t count) {
+        void setFromPtr(const char* ptr, size_t count) {
             // Emplace construct the InlineVec variant
             data.emplace<InlineVec<T>>(count);
             // Get pointer to the data we just created
@@ -437,12 +437,13 @@ namespace dsts::geom
     void unpackVertices(
         std::vector<Vertex> &vertices,
         const std::vector<binary::MeshAttribute>& descriptors,
-        const std::string& packedVertices, 
+        const char* packedVertices, 
+        size_t size,
         size_t vertexStride
     ) {
         if (!vertices.empty()) vertices.clear();
         
-        size_t vertexCount = packedVertices.size() / vertexStride;
+        size_t vertexCount = size / vertexStride;
         vertices.resize(vertexCount);
 
         // --- PRE-CALCULATION STEP ---
@@ -475,15 +476,15 @@ namespace dsts::geom
         }
 
         // --- BATCH PROCESSING STEP ---
-        const uint8_t* streamStart = reinterpret_cast<const uint8_t*>(packedVertices.data());
+        const char* streamStart = packedVertices;
 
         for (size_t i = 0; i < vertexCount; ++i) {
             Vertex& v = vertices[i];
-            const uint8_t* vertexPtr = streamStart + (i * vertexStride);
+            const char* vertexPtr = streamStart + (i * vertexStride);
 
             // Unroll the jobs for this specific vertex
             for (const auto& job : jobs) {
-                const uint8_t* dataPtr = vertexPtr + job.offset;
+                const char* dataPtr = vertexPtr + job.offset;
                 VertexAttribute& attr = v.*(job.member); // Access member via pointer
 
                 // Direct dispatch based on type

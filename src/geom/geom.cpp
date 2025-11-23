@@ -163,11 +163,11 @@ namespace dsts::geom
                     f.read(reinterpret_cast<char*>(meshAttributes.data()), sizeof(binary::MeshAttribute) * meshHeaders[i].attribute_count);
 
                     size_t totalBytes =  meshHeaders[i].bytes_per_vertex *  meshHeaders[i].vertex_count;
-                    std::string allVertices(totalBytes, '\0');
+                    auto allVertices = std::make_unique<char[]>(totalBytes);
                     f.seekg(base + meshHeaders[i].vertices_offset);
-                    f.read((char*)allVertices.data(), totalBytes);
+                    f.read((char*)allVertices.get(), totalBytes);
 
-                    unpackVertices(mesh.vertices, meshAttributes, allVertices,  meshHeaders[i].bytes_per_vertex);
+                    unpackVertices(mesh.vertices, meshAttributes, allVertices.get(), totalBytes,  meshHeaders[i].bytes_per_vertex);
 
                     if (meshHeaders[i].vertex_groups_per_vertex == 0) {
                         for (auto &v : mesh.vertices) {

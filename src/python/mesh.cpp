@@ -271,7 +271,10 @@ void bind_mesh(py::module_ &m) {
             const size_t &vertexStride, 
             const py::bytes &packedVertices
         ){
-            unpackVertices(m.vertices, attributes, packedVertices, vertexStride);
+            char* data;
+            Py_ssize_t size;
+            PYBIND11_BYTES_AS_STRING_AND_SIZE(packedVertices.ptr(), &data, &size);
+            unpackVertices(m.vertices, attributes, data, size, vertexStride);
         })
         .def("__repr__",[](const Mesh &m){ return "<Mesh: " + m.name + ">"; });
 }
