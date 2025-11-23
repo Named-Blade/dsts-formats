@@ -2,77 +2,113 @@ import bpy
 import os
 
 def resolve_material(mat, mat_data, tex_folder):
-    """Create Blender nodes for a material given mat_data and texture folder.
 
-    Args:
-        mat (bpy.types.Material): The Blender material to populate
-        mat_data: Your custom material data (has .uniforms)
-        tex_folder (str): Folder path containing the textures
-    """
     mat.use_nodes = True
-    nodes = mat.node_tree.nodes
-    links = mat.node_tree.links
+    tree = mat.node_tree
+    nodes = tree.nodes
+    links = tree.links
 
-    # Clear existing nodes for safety
     nodes.clear()
 
-    # Add Output and Principled BSDF
-    output_node = nodes.new(type="ShaderNodeOutputMaterial")
-    output_node.location = (400, 0)
-    principled_node = nodes.new(type="ShaderNodeBsdfPrincipled")
-    principled_node.location = (0, 0)
-    links.new(principled_node.outputs["BSDF"], output_node.inputs["Surface"])
+    # ---------------------------------------------------------------------
+    # Create the group structure
+    # ---------------------------------------------------------------------
+    group = bpy.data.node_groups.new("DSTS_Data-"+mat.name, 'ShaderNodeTree')
 
-    shader_data_node = nodes.new(type="DSTS_ShaderData")
-    shader_data_node.location = (600, 0)
+    # Access nodes/links inside the group *immediately*
+    g_nodes = group.nodes
+    g_links = group.links
+
+    # Group input/output
+    group_in  = g_nodes.new("NodeGroupInput")
+    group_in.location = (-800, 0)
+
+    group_out = g_nodes.new("NodeGroupOutput")
+    group_out.location = (600, 0)
+
+    # Create group output socket (correct 4.x API)
+    group.interface.new_socket(
+        name="Shader",
+        in_out='OUTPUT',
+        socket_type='NodeSocketShader'
+    )
+
+    # ---------------------------------------------------------------------
+    # Create Principled BSDF inside group
+    # ---------------------------------------------------------------------
+    principled = g_nodes.new("ShaderNodeBsdfPrincipled")
+    principled.location = (0, 0)
+
+    g_links.new(principled.outputs["BSDF"], group_out.inputs["Shader"])
+
+    # DSTS shader data node
+    shader_data_node = g_nodes.new(type="DSTS_ShaderData")
+    shader_data_node.location = (300, 0)
 
     for i, shader_name in enumerate((m.name for m in mat_data.shaders)):
         shader_data_node.shader_strings[i].value = shader_name
 
-    # Track vertical position for node layout
+    # ---------------------------------------------------------------------
+    # Texture handling inside the group
+    # ---------------------------------------------------------------------
     base_x = -400
     base_y = 0
-    y_step = -300
     y_offset = 0
+    y_step = -300
 
     diffuse_texture_found = False
+
     for uniform in mat_data.uniforms:
         if uniform.uniform_type != "texture":
             continue
 
-        texture_file = uniform.value + ".img"
-        tex_path = os.path.join(tex_folder, texture_file)
-
+        tex_path = os.path.join(tex_folder, uniform.value + ".img")
         if not os.path.exists(tex_path):
             print(f"Warning: texture not found: {tex_path}")
             continue
 
-        tex_node = nodes.new("ShaderNodeTexImage")
+        tex_node = g_nodes.new("ShaderNodeTexImage")
         tex_node.image = bpy.data.images.load(tex_path)
         tex_node.location = (base_x, base_y + y_offset)
-        tex_node.label = "DSTS-"+uniform.parameter_name
-        
-        # Diffuse Color
+        tex_node.label = "DSTS-" + uniform.parameter_name
+
         if uniform.parameter_name == "DiffuseColor":
             diffuse_texture_found = True
             tex_node.image.colorspace_settings.name = 'sRGB'
-            links.new(tex_node.outputs["Color"], principled_node.inputs["Base Color"])
+            g_links.new(tex_node.outputs["Color"], principled.inputs["Base Color"])
 
-        # Normal / Bumpiness
         elif uniform.parameter_name == "Bumpiness":
             tex_node.image.colorspace_settings.name = 'Non-Color'
 
-            normal_node = nodes.new("ShaderNodeNormalMap")
+            normal_node = g_nodes.new("ShaderNodeNormalMap")
             normal_node.location = (base_x + 200, base_y + y_offset - 50)
             normal_node.space = 'TANGENT'
 
-            links.new(tex_node.outputs["Color"], normal_node.inputs["Color"])
-            links.new(normal_node.outputs["Normal"], principled_node.inputs["Normal"])
+            g_links.new(tex_node.outputs["Color"], normal_node.inputs["Color"])
+            g_links.new(normal_node.outputs["Normal"], principled.inputs["Normal"])
 
         y_offset += y_step
-    
+
+    # Fallback for base color
     if not diffuse_texture_found:
-        attr_node = nodes.new("ShaderNodeAttribute")
+        attr_node = g_nodes.new("ShaderNodeAttribute")
         attr_node.location = (-600, 0)
         attr_node.attribute_name = "Color"
-        links.new(attr_node.outputs["Color"], principled_node.inputs["Base Color"])
+        g_links.new(attr_node.outputs["Color"], principled.inputs["Base Color"])
+
+    # ---------------------------------------------------------------------
+    # Instantiate the group in the material tree
+    # ---------------------------------------------------------------------
+    group_node = nodes.new("ShaderNodeGroup")
+    group_node.node_tree = group
+    group_node.location = (0, 0)
+    
+    name = group_node.node_tree.name
+    base_width = 60
+    char_width = 8
+    group_node.width = base_width + len(name) * char_width
+
+    output = nodes.new("ShaderNodeOutputMaterial")
+    output.location = (400, 0)
+
+    links.new(group_node.outputs["Shader"], output.inputs["Surface"])
