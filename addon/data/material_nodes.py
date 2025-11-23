@@ -1,5 +1,5 @@
 import bpy
-from bpy.types import Node, PropertyGroup
+from bpy.types import Node, PropertyGroup, Menu
 
 # --- Custom Property Group for strings ---
 class ShaderString(PropertyGroup):
@@ -11,7 +11,6 @@ class ShaderDataNode(Node):
     bl_label = "DSTS Shader Data Node"
     bl_icon = 'NODE'
 
-    # Store a list of strings as a property group
     shader_strings: bpy.props.CollectionProperty(type=ShaderString)
     
     string_count: bpy.props.IntProperty(
@@ -31,29 +30,53 @@ class ShaderDataNode(Node):
         self.width = 500
     
     def draw_buttons(self, context, layout):
-        #layout.prop(self, "string_count")
         for i, s in enumerate(self.shader_strings):
             layout.prop(s, "value", text=f"Shader {i+1}")
     
     def get_shader_strings(self):
         return [s.value for s in self.shader_strings]
 
-# --- Add menu entry ---
-def shader_data_node_menu(self, context):
-    self.layout.operator("node.add_node", 
-                         text="DSTS Shader Data Node",
-                         icon='NODE').type = ShaderDataNode.bl_idname
+# -------------------------
+#   CUSTOM SUBMENU
+# -------------------------
+class NODE_MT_dsts_menu(Menu):
+    bl_idname = "NODE_MT_dsts_menu"
+    bl_label = "DSTS Nodes"
 
-# --- Register ---
+    def draw(self, context):
+        layout = self.layout
+        layout.operator(
+            "node.add_node",
+            text="Shader Data Node",
+            icon='NODE'
+        ).type = ShaderDataNode.bl_idname
+
+
+# -------------------------
+#   Add submenu to Add Menu
+# -------------------------
+def add_dsts_submenu(self, context):
+    self.layout.menu(NODE_MT_dsts_menu.bl_idname)
+
+
+# -------------------------
+#   Register
+# -------------------------
+classes = (
+    ShaderString,
+    ShaderDataNode,
+    NODE_MT_dsts_menu,
+)
+
 def register():
-    bpy.utils.register_class(ShaderString)
-    bpy.utils.register_class(ShaderDataNode)
-    bpy.types.NODE_MT_add.append(shader_data_node_menu)
+    for cls in classes:
+        bpy.utils.register_class(cls)
+    bpy.types.NODE_MT_add.append(add_dsts_submenu)
 
 def unregister():
-    bpy.types.NODE_MT_add.remove(shader_data_node_menu)
-    bpy.utils.unregister_class(ShaderDataNode)
-    bpy.utils.unregister_class(ShaderString)
+    bpy.types.NODE_MT_add.remove(add_dsts_submenu)
+    for cls in reversed(classes):
+        bpy.utils.unregister_class(cls)
 
 if __name__ == "__main__":
     register()

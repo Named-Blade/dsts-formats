@@ -4,7 +4,7 @@ from bpy.props import StringProperty
 from bpy.types import Operator
 
 from .geom import import_geom
-from .data import shaderDataNode
+from .data import material_nodes
 
 bl_info = {
     "name": "Dsts Formats",
@@ -28,7 +28,7 @@ class MY_OT_dsts_geom_import_operator(Operator, ImportHelper):
 
     def execute(self, context):
         filepath = self.filepath
-        import_geom(context, filepath)
+        imported_collection = import_geom(context, filepath)
 
         return {'FINISHED'}
 
@@ -38,9 +38,9 @@ def menu_func_import(self, context):
 def register():
     bpy.utils.register_class(MY_OT_dsts_geom_import_operator)
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
-    shaderDataNode.register()
+    material_nodes.register()
 
 def unregister():
     bpy.types.TOPBAR_MT_file_import.remove(menu_func_import)
     bpy.utils.unregister_class(MY_OT_dsts_geom_import_operator)
-    shaderDataNode.unregister()
+    material_nodes.unregister()

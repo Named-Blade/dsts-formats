@@ -47,23 +47,19 @@ def resolve_material(mat, mat_data, tex_folder):
             print(f"Warning: texture not found: {tex_path}")
             continue
 
+        tex_node = nodes.new("ShaderNodeTexImage")
+        tex_node.image = bpy.data.images.load(tex_path)
+        tex_node.location = (base_x, base_y + y_offset)
+        tex_node.label = "DSTS-"+uniform.parameter_name
+        
         # Diffuse Color
         if uniform.parameter_name == "DiffuseColor":
             diffuse_texture_found = True
-            tex_node = nodes.new("ShaderNodeTexImage")
-            tex_node.image = bpy.data.images.load(tex_path)
-            tex_node.location = (base_x, base_y + y_offset)
-            tex_node.label = "Diffuse Texture"
             tex_node.image.colorspace_settings.name = 'sRGB'
             links.new(tex_node.outputs["Color"], principled_node.inputs["Base Color"])
-            y_offset += y_step
 
         # Normal / Bumpiness
         elif uniform.parameter_name == "Bumpiness":
-            tex_node = nodes.new("ShaderNodeTexImage")
-            tex_node.image = bpy.data.images.load(tex_path)
-            tex_node.location = (base_x, base_y + y_offset)
-            tex_node.label = "Normal Map"
             tex_node.image.colorspace_settings.name = 'Non-Color'
 
             normal_node = nodes.new("ShaderNodeNormalMap")
@@ -72,7 +68,8 @@ def resolve_material(mat, mat_data, tex_folder):
 
             links.new(tex_node.outputs["Color"], normal_node.inputs["Color"])
             links.new(normal_node.outputs["Normal"], principled_node.inputs["Normal"])
-            y_offset += y_step
+
+        y_offset += y_step
     
     if not diffuse_texture_found:
         attr_node = nodes.new("ShaderNodeAttribute")

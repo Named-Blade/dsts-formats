@@ -258,6 +258,10 @@ namespace dsts::geom
                         uniform.unknown_0x18 = uniform_bin.unknown_0x18;
                         uniform.unknown_0x1C = uniform_bin.unknown_0x1C;
 
+                        assert(uniform.unknown_0x14 = 0xFFFFFFFF);
+                        assert(uniform.unknown_0x18 = 0xFFFFFFFF);
+                        assert(uniform.unknown_0x1C = 0xFFFFFF);
+
                         if (uniform_bin.float_count > 0) {
 
                             std::vector<float> vec(uniform_bin.float_count);
@@ -300,6 +304,10 @@ namespace dsts::geom
                         setting.unknown_0x14 = setting_bin.unknown_0x14;
                         setting.unknown_0x18 = setting_bin.unknown_0x18;
                         setting.unknown_0x1C = setting_bin.unknown_0x1C;
+
+                        assert(setting.unknown_0x14 = 0xFFFFFFFF);
+                        assert(setting.unknown_0x18 = 0xFFFFFFFF);
+                        assert(setting.unknown_0x1C = 0xFFFFFF);
 
                         material.settings.push_back(setting);
                     }

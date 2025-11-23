@@ -38,3 +38,5 @@ def import_geom(context, filepath):
             blender_materials, 
             new_collection
         )
+
+    return new_collection

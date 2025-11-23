@@ -50,18 +50,18 @@ namespace dsts::geom::binary
         } payload;
         uint16_t parameter_id;
         uint16_t float_count;
-        uint32_t unknown_0x14;
-        uint32_t unknown_0x18;
-        uint32_t unknown_0x1C;
+        uint32_t unknown_0x14 = 0xFFFFFFFF;
+        uint32_t unknown_0x18 = 0xFFFFFFFF;
+        uint32_t unknown_0x1C = 0xFFFFFF;
     };
 
     struct ShaderSetting{
         Payload payload;
         uint16_t parameter_id;
         uint16_t unknown_0x12;
-        uint32_t unknown_0x14;
-        uint32_t unknown_0x18;
-        uint32_t unknown_0x1C;
+        uint32_t unknown_0x14 = 0xFFFFFFFF;
+        uint32_t unknown_0x18 = 0xFFFFFFFF;
+        uint32_t unknown_0x1C = 0xFFFFFF;
     };
 
     struct ShaderParamDef {
