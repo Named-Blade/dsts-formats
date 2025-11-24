@@ -138,4 +138,17 @@ def import_skeleton(skeleton, target_collection=None, coordinate_remap=None):
             edit_bone.parent = bone_map[bone.parent.name]
 
     bpy.ops.object.mode_set(mode='OBJECT')
+
+    
+    # Add custom geometry flag to Bone data
+    for bone in skeleton.bones:
+        blender_bone = armature_data.bones[bone.name]
+        blender_bone["dsts_geometry"] = bone.is_geometry
+
+        rna_prop = blender_bone.id_properties_ui("dsts_geometry")
+        rna_prop.update(
+            description="Marks this bone as geometry",
+            default=bone.is_geometry
+        )
+
     return armature_obj

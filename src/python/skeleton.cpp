@@ -64,6 +64,7 @@ void bind_skeleton(py::module_ &m) {
             return DecomposeMatrix(GetWorldMatrix(b));
         })
         .def_readwrite("parent", &Bone::parent)
+        .def_readwrite("is_geometry", &Bone::is_geometry)
         .def("__repr__", [](const Bone &b){ return "<Bone :" + b.name + ">";});
 
     // FloatChannel

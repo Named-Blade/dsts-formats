@@ -61,8 +61,9 @@ def import_mesh_object(bl_mesh: dsts_formats.Mesh, armature_obj, materials_dict,
     attr_map = {a.atype: a for a in attributes}
 
     # --- GEOMETRY ---
-    # No need to pass '3', the attribute knows it has 3 components
     positions = extract_attribute(packed, stride, num_verts, attr_map["position"])
+    if positions.shape[1] == 4:
+        positions = positions[:, :3]
     
     if coord_transform:
         if isinstance(coord_transform, Matrix):
