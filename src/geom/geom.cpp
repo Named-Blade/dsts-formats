@@ -492,7 +492,14 @@ namespace dsts::geom
                         pos.emplace_back(std::array<float, 3>{floats[0], floats[1], floats[2]});
                         if (!mesh.matrix_palette[0]->is_geometry) pos_all.emplace_back(std::array<float, 3>{floats[0], floats[1], floats[2]});
                     }
-                    BoundingInfo info = calculateBoundingInfo<float>(pos);
+                    BoundingInfo info;
+                    if (mesh.matrix_palette[0]->is_geometry) {
+                        auto transform = DecomposeMatrix(GetWorldMatrix(mesh.matrix_palette[0]));
+                        std::array<float, 3> centre{transform.position[0],transform.position[1],transform.position[2]};
+                        info = calculateBoundingInfoGeometry<float>(pos, centre);
+                    } else {
+                        info = calculateBoundingInfo<float>(pos);
+                    }
 
                     meshHeader.bounding_sphere_radius = info.bounding_sphere_radius;
                     meshHeader.bbox[0] = info.bbox[0];
