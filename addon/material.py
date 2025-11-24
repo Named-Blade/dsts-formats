@@ -17,44 +17,52 @@ def layout_columns(node_groups, column_map, x_step=300, y_step=-220):
             n.location = (x, y)
             y += y_step
 
-def get_global_eye_offset_group():
+def get_collection_eye_offset_group(collection):
     """
-    Creates or retrieves a singleton Node Group that acts as a global variable.
-    All eye materials will share this specific node tree instance.
+    Creates or retrieves a node group associated with a specific collection.
+    Each collection gets its own unique eye offset node group.
     """
-    group_name = "DSTS_Global_Eye_Offset"
-    
-    if group_name in bpy.data.node_groups:
-        return bpy.data.node_groups[group_name]
-    
-    # Create the group if it doesn't exist
-    group = bpy.data.node_groups.new(group_name, 'ShaderNodeTree')
-    
-    nodes = group.nodes
-    links = group.links
-    
-    # Create a Value node (This is the UI Slider)
-    # We label it clearly so the user knows this is the global controller
-    input_val = nodes.new("ShaderNodeValue")
-    input_val.label = "GLOBAL Y OFFSET"
-    input_val.location = (-200, 0)
-    input_val.outputs[0].default_value = 0.0
-    
-    # Output
-    group_out = nodes.new("NodeGroupOutput")
-    group_out.location = (200, 0)
-    
-    group.interface.new_socket(
-        name="Offset Value",
-        in_out='OUTPUT',
-        socket_type='NodeSocketFloat'
-    )
-    
-    links.new(input_val.outputs[0], group_out.inputs[0])
-    
+    if not collection.get("eye_offset_group_name"):
+        # Create a new node group
+        group_name = f"{collection.name}_Eye_Offset"
+        group = bpy.data.node_groups.new(group_name, 'ShaderNodeTree')
+
+        nodes = group.nodes
+        links = group.links
+
+        # Value node for offset
+        input_val = nodes.new("ShaderNodeValue")
+        input_val.label = "COLLECTION Y OFFSET"
+        input_val.location = (-200, 0)
+        input_val.outputs[0].default_value = 0.0
+
+        # Output node
+        group_out = nodes.new("NodeGroupOutput")
+        group_out.location = (200, 0)
+
+        # Create output socket
+        group.interface.new_socket(
+            name="Offset Value",
+            in_out='OUTPUT',
+            socket_type='NodeSocketFloat'
+        )
+
+        # Connect Value node to output
+        links.new(input_val.outputs[0], group_out.inputs[0])
+
+        # Save reference in collection custom property
+        collection["eye_offset_group_name"] = group.name
+    else:
+        group_name = collection["eye_offset_group_name"]
+        group = bpy.data.node_groups.get(group_name)
+        if group is None:
+            # If the group was deleted, recreate
+            del collection["eye_offset_group_name"]
+            return get_collection_eye_offset_group(collection)
+
     return group
 
-def resolve_material(mat, mat_data, tex_folder):
+def resolve_material(collection, mat, mat_data, tex_folder):
 
     mat.use_nodes = True
     mat.blend_method = 'BLEND'
@@ -125,7 +133,7 @@ def resolve_material(mat, mat_data, tex_folder):
         # --- GLOBAL OFFSET LOGIC ---
         # 1. Add the Shared Global Group Node
         global_offset_node = g_nodes.new("ShaderNodeGroup")
-        global_offset_node.node_tree = get_global_eye_offset_group()
+        global_offset_node.node_tree = get_collection_eye_offset_group(collection)
         global_offset_node.label = "Global Offset Control"
 
         # 2. Create Combine XYZ (Input Y)

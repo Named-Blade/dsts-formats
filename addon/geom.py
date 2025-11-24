@@ -26,7 +26,7 @@ def import_geom(context, filepath):
         mat = bpy.data.materials.new(name=mat_data.name)
         # Fix name collision handled by Blender
         mat_data.name = mat.name 
-        material.resolve_material(mat, mat_data, base_path)
+        material.resolve_material(new_collection, mat, mat_data, base_path)
         blender_materials[mat_data.name] = mat
 
     # Import Objects (Optimized)
