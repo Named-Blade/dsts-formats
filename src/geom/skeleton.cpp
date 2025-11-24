@@ -22,7 +22,6 @@ namespace dsts::geom
             std::string name;
 
             binary::BoneTransform transform;
-            binary::BoneTransform transform_actual;
             
             std::shared_ptr<Bone> parent;
 
@@ -382,7 +381,20 @@ namespace dsts::geom
             return local;
     }
 
+    Matrix GetWorldMatrix(const Bone &bone){
+        Matrix local = TransformToMatrix(bone.transform);
+        if (bone.parent)
+            return GetWorldMatrix(bone.parent).multiply(local);
+        else
+            return local;
+    }
+
     Matrix ComputeInverseBindPose(const std::shared_ptr<Bone>& bone){
+        Matrix world = GetWorldMatrix(bone);
+        return world.inverse();
+    }
+
+    Matrix ComputeInverseBindPose(const Bone &bone){
         Matrix world = GetWorldMatrix(bone);
         return world.inverse();
     }

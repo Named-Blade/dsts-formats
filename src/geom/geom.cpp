@@ -104,13 +104,14 @@ namespace dsts::geom
                 assert(ibpms.size() == skeleton.bones.size());
                 for (int i = 0; i < skeleton.bones.size(); i++) {
                     assert(ibpmEqual(ibpms[i], ibpmFromMatrix(ComputeInverseBindPose(skeleton.bones[i]))));
-                    skeleton.bones[i]->transform_actual = DecomposeMatrix(MatrixFromIbpm(ibpms[i]).inverse());
                 }
 
                 for (int i = 0; i < skeleton.bones.size(); i++) {
                     auto b = *skeleton.bones[i].get();
-                    assert(transformEqual(b.transform_actual,getAbsoluteTransform(b.transform, b.parent ? &b.parent->transform_actual : nullptr)));
-                    assert(transformEqual(b.transform,getRelativeTransform(b.transform_actual, b.parent ? &b.parent->transform_actual : nullptr)));
+                    auto transform_actual = DecomposeMatrix(GetWorldMatrix(b));
+                    auto parent_actual = b.parent ? DecomposeMatrix(GetWorldMatrix(b.parent)) : binary::BoneTransform();
+                    assert(transformEqual(transform_actual,getAbsoluteTransform(b.transform, &parent_actual)));
+                    assert(transformEqual(b.transform,getRelativeTransform(transform_actual, &parent_actual)));
                 }
 
                 std::vector<binary::MeshHeader> meshHeaders(header.mesh_count);
