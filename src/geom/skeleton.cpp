@@ -25,6 +25,8 @@ namespace dsts::geom
             
             std::shared_ptr<Bone> parent;
 
+            bool is_geometry = false;
+
             void setName(std::string newName){
                 name = newName;
                 name_hash = crc32((const uint8_t*)name.data(),name.length());

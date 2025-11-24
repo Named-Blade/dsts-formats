@@ -636,4 +636,48 @@ namespace dsts::geom
             default: return "";
         }
     }
+
+    std::vector<std::pair<std::shared_ptr<Bone>, const Mesh*>> getGeometry(const std::vector<Mesh>& meshes) {
+        struct BonePtrHash {
+            std::size_t operator()(const std::shared_ptr<Bone>& b) const noexcept {
+                return std::hash<Bone*>()(b.get());
+            }
+        };
+
+        struct BonePtrEq {
+            bool operator()(const std::shared_ptr<Bone>& a,
+                            const std::shared_ptr<Bone>& b) const noexcept {
+                return a.get() == b.get();
+            }
+        };
+
+        std::unordered_map<std::shared_ptr<Bone>, int, BonePtrHash, BonePtrEq> boneCounts;
+
+        for (const auto& mesh : meshes) {
+            // Avoid double-counting the same bone inside one mesh
+            std::unordered_set<std::shared_ptr<Bone>, BonePtrHash, BonePtrEq> uniqueBones(
+                mesh.matrix_palette.begin(), mesh.matrix_palette.end()
+            );
+
+            for (const auto& bone : uniqueBones)
+                boneCounts[bone]++;
+        }
+
+        std::vector<std::pair<std::shared_ptr<Bone>, const Mesh*>> result;
+
+        // Filter bones and return (bone, mesh) pairs
+        for (const auto& mesh : meshes) {
+            if (mesh.flag_2 && mesh.matrix_palette.size() == 1) {
+                const auto& bone = mesh.matrix_palette.front();
+
+                auto it = boneCounts.find(bone);
+                if (it != boneCounts.end() && it->second == 1) {
+                    // This bone appears in exactly one mesh, and this mesh has only this bone
+                    result.emplace_back(bone, &mesh);
+                }
+            }
+        }
+
+        return result;
+    }
 }

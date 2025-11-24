@@ -100,20 +100,6 @@ namespace dsts::geom
                     }
                 }
 
-                //sanity tests
-                assert(ibpms.size() == skeleton.bones.size());
-                for (int i = 0; i < skeleton.bones.size(); i++) {
-                    assert(ibpmEqual(ibpms[i], ibpmFromMatrix(ComputeInverseBindPose(skeleton.bones[i]))));
-                }
-
-                for (int i = 0; i < skeleton.bones.size(); i++) {
-                    auto b = *skeleton.bones[i].get();
-                    auto transform_actual = DecomposeMatrix(GetWorldMatrix(b));
-                    auto parent_actual = b.parent ? DecomposeMatrix(GetWorldMatrix(b.parent)) : binary::BoneTransform();
-                    assert(transformEqual(transform_actual,getAbsoluteTransform(b.transform, &parent_actual)));
-                    assert(transformEqual(b.transform,getRelativeTransform(transform_actual, &parent_actual)));
-                }
-
                 std::vector<binary::MeshHeader> meshHeaders(header.mesh_count);
                 f.seekg(base + header.mesh_offset);
                 f.read(reinterpret_cast<char*>(meshHeaders.data()), sizeof(binary::MeshHeader) * header.mesh_count);
@@ -203,6 +189,28 @@ namespace dsts::geom
                     assert(meshHeaders[i].controller_offset == 0);
 
                     meshes.push_back(mesh);
+                }
+
+                for (const auto &pair : getGeometry(meshes)) {
+                    pair.first->is_geometry = true;
+                }
+
+                //sanity tests
+                assert(ibpms.size() == skeleton.bones.size());
+                for (int i = 0; i < skeleton.bones.size(); i++) {
+                    if (skeleton.bones[i]->is_geometry) {
+                        assert(ibpmEqual(ibpms[i], Ibpm()));
+                    } else {
+                        assert(ibpmEqual(ibpms[i], ibpmFromMatrix(ComputeInverseBindPose(skeleton.bones[i]))));
+                    }
+                }
+
+                for (int i = 0; i < skeleton.bones.size(); i++) {
+                    auto b = *skeleton.bones[i].get();
+                    auto transform_actual = DecomposeMatrix(GetWorldMatrix(b));
+                    auto parent_actual = b.parent ? DecomposeMatrix(GetWorldMatrix(b.parent)) : binary::BoneTransform();
+                    assert(transformEqual(transform_actual,getAbsoluteTransform(b.transform, &parent_actual)));
+                    assert(transformEqual(b.transform,getRelativeTransform(transform_actual, &parent_actual)));
                 }
 
                 {
@@ -592,7 +600,11 @@ namespace dsts::geom
                 header.ibpm_offset = ibpmsBase;
 
                 for (int i = 0; i < skeleton.bones.size(); i++) {
-                    ibpms[i] = ibpmFromMatrix(ComputeInverseBindPose(skeleton.bones[i]));
+                    if (skeleton.bones[i]->is_geometry) {
+                        ibpms[i] = Ibpm();
+                    } else {
+                        ibpms[i] = ibpmFromMatrix(ComputeInverseBindPose(skeleton.bones[i]));
+                    }
                 }
 
                 size_t clutBase = ibpmsBase + sizeof(binary::Ibpm) * ibpms.size();
