@@ -175,17 +175,6 @@ namespace dsts::geom
                     f.seekg(base + meshHeaders[i].indices_offset);
                     f.read(reinterpret_cast<char*>(mesh.indices.data()), sizeof(uint16_t) * meshHeaders[i].index_count);
 
-                    //bounding sanity check
-                    std::vector<std::array<float, 3>> pos;
-                    pos.reserve(mesh.vertices.size());
-                    for (const auto& vertex : mesh.vertices) {
-                        const auto& floats = std::get<InlineVec<float>>(vertex.position.data);
-                        pos.emplace_back(std::array<float, 3>{floats[0], floats[1], floats[2]});
-                    }
-                    BoundingInfo info = calculateBoundingInfo<float>(pos);
-
-                    assert(boundingEquals(info,boundingFromHeader(meshHeaders[i])));
-
                     assert(meshHeaders[i].controller_offset == 0);
 
                     meshes.push_back(mesh);
@@ -193,6 +182,26 @@ namespace dsts::geom
 
                 for (const auto &pair : getGeometry(meshes)) {
                     pair.first->is_geometry = true;
+                }
+
+                for (int i = 0; i < meshes.size() ; i++) {
+                    //bounding sanity check
+                    Mesh mesh = meshes[i];
+                    std::vector<std::array<float, 3>> pos;
+                    pos.reserve(mesh.vertices.size());
+                    for (const auto& vertex : mesh.vertices) {
+                        const auto& floats = std::get<InlineVec<float>>(vertex.position.data);
+                        pos.emplace_back(std::array<float, 3>{floats[0], floats[1], floats[2]});
+                    }
+                    if (mesh.matrix_palette.size() > 0 && mesh.matrix_palette[0]->is_geometry) {
+                        auto transform = DecomposeMatrix(GetWorldMatrix(mesh.matrix_palette[0]));
+                        std::array<float, 3> centre{transform.position[0],transform.position[1],transform.position[2]};
+                        BoundingInfo info = calculateBoundingInfoGeometry<float>(pos, centre);
+                        assert(boundingEquals(info,boundingFromHeader(meshHeaders[i])));
+                    } else {
+                        BoundingInfo info = calculateBoundingInfo<float>(pos);
+                        assert(boundingEquals(info,boundingFromHeader(meshHeaders[i])));
+                    }
                 }
 
                 //sanity tests
@@ -216,10 +225,12 @@ namespace dsts::geom
                 {
                     std::vector<std::array<float, 3>> pos_list;
                     for (const auto &mesh : meshes) {
-                        for (const auto &vertex : mesh.vertices){
-                            const auto& floats = std::get<InlineVec<float>>(vertex.position.data);
-                            pos_list.emplace_back(std::array<float, 3>{floats[0], floats[1], floats[2]});
-                        }
+                        if (!mesh.matrix_palette[0]->is_geometry) {
+                            for (const auto &vertex : mesh.vertices){
+                                const auto& floats = std::get<InlineVec<float>>(vertex.position.data);
+                                pos_list.emplace_back(std::array<float, 3>{floats[0], floats[1], floats[2]});
+                            }
+                        }   
                     }
                     BoundingInfo info = calculateBoundingInfo<float>(pos_list);
                     info.bounding_sphere_radius = 0.0;
@@ -385,7 +396,7 @@ namespace dsts::geom
                 std::vector<std::array<float, 3>> pos_all;
                 size_t totalVertexCount = 0;
                 for (const auto& mesh : meshes) {
-                    totalVertexCount += mesh.vertices.size();
+                    if (!mesh.matrix_palette[0]->is_geometry) totalVertexCount += mesh.vertices.size();
                 }
                 pos_all.reserve(totalVertexCount);
 
@@ -479,7 +490,7 @@ namespace dsts::geom
                     for (const auto& vertex : vertexCopy) {
                         const auto& floats = std::get<InlineVec<float>>(vertex.position.data);
                         pos.emplace_back(std::array<float, 3>{floats[0], floats[1], floats[2]});
-                        pos_all.emplace_back(std::array<float, 3>{floats[0], floats[1], floats[2]});
+                        if (!mesh.matrix_palette[0]->is_geometry) pos_all.emplace_back(std::array<float, 3>{floats[0], floats[1], floats[2]});
                     }
                     BoundingInfo info = calculateBoundingInfo<float>(pos);
 

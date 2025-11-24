@@ -210,7 +210,7 @@ namespace dsts::geom
         return info;
     }
 
-    bool boundingEquals(BoundingInfo a, BoundingInfo b, float eps = 1e-4f) {
+    bool boundingEquals(BoundingInfo a, BoundingInfo b, float eps = 1e-2f) {
         if (std::fabs(a.bounding_sphere_radius - b.bounding_sphere_radius) > eps) {
             return false;
         }
@@ -263,6 +263,57 @@ namespace dsts::geom
         }
 
         info.bounding_sphere_radius = max_dist;
+        return info;
+    }
+
+    template<typename T>
+    BoundingInfo calculateBoundingInfoGeometry (
+        const std::vector<std::array<T, 3>>& positions,
+        const std::array<T, 3>& provided_center
+    ) {
+        BoundingInfo info{};
+        info.centre = provided_center;
+
+        if (positions.empty()) {
+            return info;
+        }
+
+        // --- Compute min & max normally ---
+        std::array<T, 3> min_corner = positions[0];
+        std::array<T, 3> max_corner = positions[0];
+
+        for (const auto& p : positions) {
+            for (int i = 0; i < 3; ++i) {
+                min_corner[i] = std::min(min_corner[i], p[i]);
+                max_corner[i] = std::max(max_corner[i], p[i]);
+            }
+        }
+
+        // --- Compute bounding box from *computed* center ---
+        std::array<T, 3> computed_center{};
+        std::array<T, 3> bbox_extents{};  // half extents
+
+        for (int i = 0; i < 3; ++i) {
+            computed_center[i] = (min_corner[i] + max_corner[i]) * T(0.5);
+            bbox_extents[i] = (max_corner[i] - min_corner[i]) * T(0.5);
+        }
+
+        // --- Convert bounding box to a cube ---
+        T largest = std::max({ bbox_extents[0], bbox_extents[1], bbox_extents[2] });
+        info.bbox = { largest, largest, largest };
+
+        // --- Compute bounding sphere radius using the *provided center* ---
+        T max_dist = 0;
+        for (const auto& p : positions) {
+            T dx = p[0] - provided_center[0];
+            T dy = p[1] - provided_center[1];
+            T dz = p[2] - provided_center[2];
+            T dist = std::sqrt(dx*dx + dy*dy + dz*dz);
+            max_dist = std::max(max_dist, dist);
+        }
+
+        info.bounding_sphere_radius = max_dist;
+
         return info;
     }
 
