@@ -36,6 +36,11 @@ def get_collection_eye_offset_group(collection):
         input_val.location = (-200, 0)
         input_val.outputs[0].default_value = 0.0
 
+        input_val_2 = nodes.new("ShaderNodeValue")
+        input_val_2.label = "COLLECTION X OFFSET"
+        input_val_2.location = (-200, 200)
+        input_val_2.outputs[0].default_value = 0.0
+
         # Output node
         group_out = nodes.new("NodeGroupOutput")
         group_out.location = (200, 0)
@@ -47,8 +52,15 @@ def get_collection_eye_offset_group(collection):
             socket_type='NodeSocketFloat'
         )
 
+        group.interface.new_socket(
+            name="Offset Value X",
+            in_out='OUTPUT',
+            socket_type='NodeSocketFloat'
+        )
+
         # Connect Value node to output
         links.new(input_val.outputs[0], group_out.inputs[0])
+        links.new(input_val_2.outputs[0], group_out.inputs[1])
 
         # Save reference in collection custom property
         collection["eye_offset_group_name"] = group.name
@@ -144,6 +156,7 @@ def resolve_material(collection, mat, mat_data, tex_folder):
         offset_math.operation = 'ADD'
 
         # 4. Link Global Node -> Combine XYZ (Y axis)
+        g_links.new(global_offset_node.outputs[1], offset_combiner.inputs["X"])
         g_links.new(global_offset_node.outputs[0], offset_combiner.inputs["Y"])
         
         # 5. Link UV -> Math A
@@ -255,8 +268,7 @@ def resolve_material(collection, mat, mat_data, tex_folder):
                             bpy.types.ShaderNodeVectorMath,
                             bpy.types.ShaderNodeAttribute)):
             columns["utility"].append(n)
-        elif isinstance(n, bpy.types.ShaderNodeGroup) and n.node_tree.name == "DSTS_Global_Eye_Offset":
-            # Place the global controller near inputs
+        elif isinstance(n, bpy.types.ShaderNodeGroup) and n.node_tree.name == f"{collection.name}_Eye_Offset":
             columns["input"].append(n)
 
     # Define X-column indices
