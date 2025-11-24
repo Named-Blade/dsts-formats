@@ -2,6 +2,29 @@ import bpy
 import os
 import re
 
+def layout_columns(node_groups, column_map, x_step=300, y_step=-220):
+    """
+    Automatically lays out nodes inside a node tree in vertical columns.
+
+    node_groups = {
+        "column_name": [node1, node2, node3...]
+    }
+
+    column_map = {
+        "column_name": x_index
+    }
+    """
+    for col_name, nodes in node_groups.items():
+        if not nodes:
+            continue
+
+        x = column_map[col_name] * x_step
+        y = 0
+
+        for n in nodes:
+            n.location = (x, y)
+            y += y_step
+
 def resolve_material(mat, mat_data, tex_folder):
 
     mat.use_nodes = True
@@ -23,10 +46,8 @@ def resolve_material(mat, mat_data, tex_folder):
 
     # Group input/output
     group_in  = g_nodes.new("NodeGroupInput")
-    group_in.location = (-800, 0)
 
     group_out = g_nodes.new("NodeGroupOutput")
-    group_out.location = (600, 0)
 
     # Create group output socket (correct 4.x API)
     group.interface.new_socket(
@@ -39,7 +60,6 @@ def resolve_material(mat, mat_data, tex_folder):
     # Create Principled BSDF inside group
     # ---------------------------------------------------------------------
     principled = g_nodes.new("ShaderNodeBsdfPrincipled")
-    principled.location = (0, 0)
     if any([s in mat_data.name for s in ["eye_","MTR_line"]]):
         #no idea how to render these, just hide for now
         principled.inputs['Alpha'].default_value = 0.0
@@ -48,7 +68,6 @@ def resolve_material(mat, mat_data, tex_folder):
 
     # DSTS shader data node
     shader_data_node = g_nodes.new(type="DSTS_ShaderData")
-    shader_data_node.location = (300, 0)
 
     for i, shader_name in enumerate((m.name for m in mat_data.shaders)):
         shader_data_node.shader_strings[i].value = shader_name
@@ -66,7 +85,6 @@ def resolve_material(mat, mat_data, tex_folder):
     is_eye = re.match(".*_f[0-9]{2}(\.[0-9]{3})?$", mat_data.name)
 
     normal_node = g_nodes.new("ShaderNodeNormalMap")
-    normal_node.location = (base_x + 200, base_y + y_offset - 50)
     normal_node.space = 'TANGENT'
 
     g_links.new(normal_node.outputs["Normal"], principled.inputs["Normal"])
@@ -98,7 +116,6 @@ def resolve_material(mat, mat_data, tex_folder):
 
         tex_node = g_nodes.new("ShaderNodeTexImage")
         tex_node.image = bpy.data.images.load(tex_path)
-        tex_node.location = (base_x, base_y + y_offset)
         tex_node.label = "DSTS-" + uniform.parameter_name
 
         if uniform.parameter_name == "DiffuseColor":
@@ -135,14 +152,50 @@ def resolve_material(mat, mat_data, tex_folder):
             g_links.new(tex_node.outputs["Color"], overlay_eye_normal.inputs["Color2"])
             g_links.new(tex_node.outputs["Alpha"], overlay_eye_normal.inputs["Fac"])
 
-        y_offset += y_step
-
     # Fallback for base color
     if not diffuse_texture_found:
         attr_node = g_nodes.new("ShaderNodeAttribute")
-        attr_node.location = (-600, 0)
         attr_node.attribute_name = "Color"
         g_links.new(attr_node.outputs["Color"], principled.inputs["Base Color"])
+
+    # ------------------------------------------------------------
+    # Organize nodes into columns
+    # ------------------------------------------------------------
+    columns = {
+        "input": [],
+        "textures": [],
+        "utility": [],
+        "shader": [],
+        "output": []
+    }
+
+    # Categorize nodes
+    for n in g_nodes:
+        if isinstance(n, bpy.types.NodeGroupInput):
+            columns["input"].append(n)
+        elif isinstance(n, bpy.types.NodeGroupOutput):
+            columns["output"].append(n)
+        elif isinstance(n, bpy.types.ShaderNodeTexImage):
+            columns["textures"].append(n)
+        elif isinstance(n, bpy.types.ShaderNodeBsdfPrincipled):
+            columns["shader"].append(n)
+        elif isinstance(n, (bpy.types.ShaderNodeNormalMap,
+                            bpy.types.ShaderNodeMixRGB,
+                            bpy.types.ShaderNodeUVMap,
+                            bpy.types.ShaderNodeAttribute)):
+            columns["utility"].append(n)
+
+    # Define X-column indices
+    column_map = {
+        "input": 0,
+        "textures": 1,
+        "utility": 2,
+        "shader": 3,
+        "output": 4
+    }
+
+    # Apply layout
+    layout_columns(columns, column_map)
 
     # ---------------------------------------------------------------------
     # Instantiate the group in the material tree
