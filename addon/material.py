@@ -5,14 +5,6 @@ import re
 def layout_columns(node_groups, column_map, x_step=300, y_step=-220):
     """
     Automatically lays out nodes inside a node tree in vertical columns.
-
-    node_groups = {
-        "column_name": [node1, node2, node3...]
-    }
-
-    column_map = {
-        "column_name": x_index
-    }
     """
     for col_name, nodes in node_groups.items():
         if not nodes:
@@ -25,6 +17,43 @@ def layout_columns(node_groups, column_map, x_step=300, y_step=-220):
             n.location = (x, y)
             y += y_step
 
+def get_global_eye_offset_group():
+    """
+    Creates or retrieves a singleton Node Group that acts as a global variable.
+    All eye materials will share this specific node tree instance.
+    """
+    group_name = "DSTS_Global_Eye_Offset"
+    
+    if group_name in bpy.data.node_groups:
+        return bpy.data.node_groups[group_name]
+    
+    # Create the group if it doesn't exist
+    group = bpy.data.node_groups.new(group_name, 'ShaderNodeTree')
+    
+    nodes = group.nodes
+    links = group.links
+    
+    # Create a Value node (This is the UI Slider)
+    # We label it clearly so the user knows this is the global controller
+    input_val = nodes.new("ShaderNodeValue")
+    input_val.label = "GLOBAL Y OFFSET"
+    input_val.location = (-200, 0)
+    input_val.outputs[0].default_value = 0.0
+    
+    # Output
+    group_out = nodes.new("NodeGroupOutput")
+    group_out.location = (200, 0)
+    
+    group.interface.new_socket(
+        name="Offset Value",
+        in_out='OUTPUT',
+        socket_type='NodeSocketFloat'
+    )
+    
+    links.new(input_val.outputs[0], group_out.inputs[0])
+    
+    return group
+
 def resolve_material(mat, mat_data, tex_folder):
 
     mat.use_nodes = True
@@ -36,7 +65,7 @@ def resolve_material(mat, mat_data, tex_folder):
     nodes.clear()
 
     # ---------------------------------------------------------------------
-    # Create the group structure
+    # Create the main material group structure
     # ---------------------------------------------------------------------
     group = bpy.data.node_groups.new("DSTS_Data-"+mat.name, 'ShaderNodeTree')
 
@@ -46,10 +75,9 @@ def resolve_material(mat, mat_data, tex_folder):
 
     # Group input/output
     group_in  = g_nodes.new("NodeGroupInput")
-
     group_out = g_nodes.new("NodeGroupOutput")
 
-    # Create group output socket (correct 4.x API)
+    # Create group output socket
     group.interface.new_socket(
         name="Shader",
         in_out='OUTPUT',
@@ -75,13 +103,6 @@ def resolve_material(mat, mat_data, tex_folder):
     # ---------------------------------------------------------------------
     # Texture handling inside the group
     # ---------------------------------------------------------------------
-    base_x = -400
-    base_y = 0
-    y_offset = 0
-    y_step = -300
-
-    diffuse_texture_found = False
-
     is_eye = re.match(".*_f[0-9]{2}(\.[0-9]{3})?$", mat_data.name)
 
     normal_node = g_nodes.new("ShaderNodeNormalMap")
@@ -89,21 +110,57 @@ def resolve_material(mat, mat_data, tex_folder):
 
     g_links.new(normal_node.outputs["Normal"], principled.inputs["Normal"])
 
+    # Variables to hold UV logic
+    final_eye_vector = None
+    
+    # Logic to process the offset
+    offset_combiner = None
+    offset_math = None
+    global_offset_node = None
+
     if is_eye:
         eye_uv = g_nodes.new("ShaderNodeUVMap")
         eye_uv.uv_map = "uv3"
 
+        # --- GLOBAL OFFSET LOGIC ---
+        # 1. Add the Shared Global Group Node
+        global_offset_node = g_nodes.new("ShaderNodeGroup")
+        global_offset_node.node_tree = get_global_eye_offset_group()
+        global_offset_node.label = "Global Offset Control"
+
+        # 2. Create Combine XYZ (Input Y)
+        offset_combiner = g_nodes.new("ShaderNodeCombineXYZ")
+        
+        # 3. Create Vector Math (Add)
+        offset_math = g_nodes.new("ShaderNodeVectorMath")
+        offset_math.operation = 'ADD'
+
+        # 4. Link Global Node -> Combine XYZ (Y axis)
+        g_links.new(global_offset_node.outputs[0], offset_combiner.inputs["Y"])
+        
+        # 5. Link UV -> Math A
+        g_links.new(eye_uv.outputs["UV"], offset_math.inputs[0])
+        
+        # 6. Link Combine XYZ -> Math B
+        g_links.new(offset_combiner.outputs["Vector"], offset_math.inputs[1])
+
+        # Store final vector for textures
+        final_eye_vector = offset_math.outputs["Vector"]
+        # ---------------------------
+
         overlay_eye_1 = g_nodes.new("ShaderNodeMixRGB")
-        overlay_eye_alpha = g_nodes.new("ShaderNodeMixRGB")
+        overlay_eye_alpha = g_nodes.new("ShaderNodeMath")
         overlay_eye_2 = g_nodes.new("ShaderNodeMixRGB")
         overlay_eye_normal = g_nodes.new("ShaderNodeMixRGB")
 
-        overlay_eye_alpha.blend_type = "ADD"
+        overlay_eye_alpha.operation = "MAXIMUM"
 
         g_links.new(overlay_eye_1.outputs["Color"], overlay_eye_2.inputs["Color2"])
-        g_links.new(overlay_eye_alpha.outputs["Color"], overlay_eye_2.inputs["Fac"])
+        g_links.new(overlay_eye_alpha.outputs["Value"], overlay_eye_2.inputs["Fac"])
         g_links.new(overlay_eye_2.outputs["Color"], principled.inputs["Base Color"])
         g_links.new(overlay_eye_normal.outputs["Color"], normal_node.inputs["Color"])
+
+    diffuse_texture_found = False
 
     for uniform in mat_data.uniforms:
         if uniform.uniform_type != "texture":
@@ -128,16 +185,18 @@ def resolve_material(mat, mat_data, tex_folder):
 
         elif uniform.parameter_name == "OverlayNormalSampler" and is_eye:
             tex_node.image.colorspace_settings.name = 'sRGB'
-            g_links.new(eye_uv.outputs["UV"], tex_node.inputs["Vector"])
+            # Connect Offset Vector
+            g_links.new(final_eye_vector, tex_node.inputs["Vector"])
             g_links.new(tex_node.outputs["Color"], overlay_eye_1.inputs["Color1"])
-            g_links.new(tex_node.outputs["Alpha"], overlay_eye_alpha.inputs["Color1"])
+            g_links.new(tex_node.outputs["Alpha"], overlay_eye_alpha.inputs[0])
 
         elif uniform.parameter_name == "OverlayColorSampler3" and is_eye:
             tex_node.image.colorspace_settings.name = 'sRGB'
-            g_links.new(eye_uv.outputs["UV"], tex_node.inputs["Vector"])
+            # Connect Offset Vector
+            g_links.new(final_eye_vector, tex_node.inputs["Vector"])
             g_links.new(tex_node.outputs["Color"], overlay_eye_1.inputs["Color2"])
             g_links.new(tex_node.outputs["Alpha"], overlay_eye_1.inputs["Fac"])
-            g_links.new(tex_node.outputs["Alpha"], overlay_eye_alpha.inputs["Color2"])
+            g_links.new(tex_node.outputs["Alpha"], overlay_eye_alpha.inputs[1])
 
         elif uniform.parameter_name == "Bumpiness":
             tex_node.image.colorspace_settings.name = 'Non-Color'
@@ -148,7 +207,8 @@ def resolve_material(mat, mat_data, tex_folder):
 
         elif uniform.parameter_name == "OverlayNormalSampler3" and is_eye:
             tex_node.image.colorspace_settings.name = 'Non-Color'
-            g_links.new(eye_uv.outputs["UV"], tex_node.inputs["Vector"])
+            # Connect Offset Vector
+            g_links.new(final_eye_vector, tex_node.inputs["Vector"])
             g_links.new(tex_node.outputs["Color"], overlay_eye_normal.inputs["Color2"])
             g_links.new(tex_node.outputs["Alpha"], overlay_eye_normal.inputs["Fac"])
 
@@ -181,9 +241,15 @@ def resolve_material(mat, mat_data, tex_folder):
             columns["shader"].append(n)
         elif isinstance(n, (bpy.types.ShaderNodeNormalMap,
                             bpy.types.ShaderNodeMixRGB,
+                            bpy.types.ShaderNodeMath,
                             bpy.types.ShaderNodeUVMap,
+                            bpy.types.ShaderNodeCombineXYZ,
+                            bpy.types.ShaderNodeVectorMath,
                             bpy.types.ShaderNodeAttribute)):
             columns["utility"].append(n)
+        elif isinstance(n, bpy.types.ShaderNodeGroup) and n.node_tree.name == "DSTS_Global_Eye_Offset":
+            # Place the global controller near inputs
+            columns["input"].append(n)
 
     # Define X-column indices
     column_map = {
