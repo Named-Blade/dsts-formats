@@ -4,7 +4,6 @@ import sys
 import statistics
 import math
 
-
 def import_skeleton(skeleton, target_collection=None, coordinate_remap=None):
     """
     Imports a Skeleton object into Blender as an armature.
@@ -14,6 +13,7 @@ def import_skeleton(skeleton, target_collection=None, coordinate_remap=None):
     to keep proportions consistent.
     """
 
+    # Create Armature Data and Object
     armature_data = bpy.data.armatures.new("Skeleton")
     armature_obj = bpy.data.objects.new("Geom", armature_data)
     
@@ -23,6 +23,7 @@ def import_skeleton(skeleton, target_collection=None, coordinate_remap=None):
     else:
         bpy.context.collection.objects.link(armature_obj)
 
+    # Set the new armature as active and switch to Edit Mode
     bpy.context.view_layer.objects.active = armature_obj
     bpy.ops.object.mode_set(mode='EDIT')
 
@@ -32,6 +33,7 @@ def import_skeleton(skeleton, target_collection=None, coordinate_remap=None):
     # Coordinate remapping helper
     # ---------------------------------------------------------
     def apply_remap_matrix(matrix):
+        """Applies a coordinate remap matrix if provided."""
         if coordinate_remap is None:
             return matrix
         if callable(coordinate_remap):
@@ -44,22 +46,27 @@ def import_skeleton(skeleton, target_collection=None, coordinate_remap=None):
     # Build global (bind) transforms
     # ---------------------------------------------------------
     def local_matrix(bone):
+        """Calculates the bone's local transformation matrix."""
         q = bone.transform.quaternion
         p = bone.transform.position
         s = bone.transform.scale
 
+        # Note: The quaternion is assumed to be (x,y,z,w) in the source data, 
+        # converted to Blender's (w,x,y,z) order here.
         pos = mathutils.Vector(p[:3])
         scl = mathutils.Vector(s[:3])
-        quat = mathutils.Quaternion((q[3], q[0], q[1], q[2]))  # (w,x,y,z)
+        quat = mathutils.Quaternion((q[3], q[0], q[1], q[2])) 
 
         mat_loc = mathutils.Matrix.Translation(pos)
         mat_rot = quat.to_matrix().to_4x4()
         mat_scl = mathutils.Matrix.Diagonal((*scl, 1.0))
+        # Local matrix composition: Translation * Rotation * Scale (T * R * S)
         return mat_loc @ mat_rot @ mat_scl
 
     global_mats = {}
 
     def compute_global(bone):
+        """Recursively computes the global bind pose matrix for a bone."""
         if bone.name in global_mats:
             return global_mats[bone.name]
         if bone.parent:
@@ -69,6 +76,7 @@ def import_skeleton(skeleton, target_collection=None, coordinate_remap=None):
             global_mats[bone.name] = local_matrix(bone)
         return global_mats[bone.name]
 
+    # Compute global matrices for all bones
     for bone in skeleton.bones:
         compute_global(bone)
 
@@ -78,25 +86,27 @@ def import_skeleton(skeleton, target_collection=None, coordinate_remap=None):
     for bone in skeleton.bones:
         edit_bone = armature_data.edit_bones.new(bone.name)
         bone_map[edit_bone.name] = edit_bone
-        bone.name = edit_bone.name
+        # Ensure the name is updated in the source object for later lookups
+        bone.name = edit_bone.name 
 
     # ---------------------------------------------------------
-    # Compute head positions and children
+    # Compute head positions and children map
     # ---------------------------------------------------------
     head_positions = {}
     children_map = {}
     for bone in skeleton.bones:
+        # Apply remap to the global matrix before extracting the position
         gmat = apply_remap_matrix(global_mats[bone.name])
         head_positions[bone.name] = gmat.to_translation()
         if bone.parent:
             children_map.setdefault(bone.parent.name, []).append(bone.name)
 
-    # Compute lengths of bones with children
+    # Compute lengths of bones with children (to find median length)
     bone_lengths = []
     for bone_name, edit_bone in bone_map.items():
         child_names = children_map.get(bone_name, [])
         if child_names:
-            # average vector to children
+            # Average vector to children
             avg = mathutils.Vector((0, 0, 0))
             for cname in child_names:
                 avg += head_positions[cname]
@@ -105,42 +115,31 @@ def import_skeleton(skeleton, target_collection=None, coordinate_remap=None):
             if length > 0:
                 bone_lengths.append(length)
 
-    # Use median length for leaf bones
+    # Use median length for leaf bones (no children)
     median_length = statistics.median(bone_lengths) if bone_lengths else 0.1
+    median_length = median_length if median_length > 0.1 else 0.1
 
     # ---------------------------------------------------------
-    # Assign heads, tails, parents
+    # Assign heads, tails, parents, and roll
     # ---------------------------------------------------------
     for bone in skeleton.bones:
         edit_bone = bone_map[bone.name]
-        edit_bone.head = head_positions[bone.name]
-
-        child_names = children_map.get(bone.name, [])
-        if child_names:
-            # average child head positions
-            avg = mathutils.Vector((0, 0, 0))
-            for cname in child_names:
-                avg += head_positions[cname]
-            avg /= len(child_names)
-            tail = avg
-        else:
-            # Leaf bone: point along global Y axis (Blender up)
-            tail = head_positions[bone.name] + mathutils.Vector((0, 0, median_length))
-
-        # Avoid degenerate bones
-        if (tail - edit_bone.head).length < 1e-5:
-            tail = edit_bone.head + mathutils.Vector((0, 0, median_length))
-
-        edit_bone.tail = tail
-        edit_bone.roll = 0.0
 
         if bone.parent:
             edit_bone.parent = bone_map[bone.parent.name]
 
+        # 2. Assign Head
+        edit_bone.head = mathutils.Vector((0, 0, 0))
+        edit_bone.tail = mathutils.Vector((0, 0, median_length))
+
+        gmat = apply_remap_matrix(global_mats[bone.name])
+        edit_bone.matrix = gmat
+
+    # Exit Edit Mode
     bpy.ops.object.mode_set(mode='OBJECT')
 
     
-    # Add custom geometry flag to Bone data
+    # Add custom geometry flag to Bone data (in Pose Mode/Object Mode)
     for bone in skeleton.bones:
         blender_bone = armature_data.bones[bone.name]
         blender_bone["dsts_geometry"] = bone.is_geometry
