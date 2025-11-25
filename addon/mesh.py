@@ -79,19 +79,6 @@ def import_mesh_object(bl_mesh: dsts_formats.Mesh, armature_obj, materials_dict,
     mesh_data = bpy.data.meshes.new(bl_mesh.name)
     mesh_data.from_pydata(positions, [], faces)
     
-    # --- NORMALS ---
-    if "normal" in attr_map:
-        normals = extract_attribute(packed, stride, num_verts, attr_map["normal"])
-        
-        if coord_transform and isinstance(coord_transform, Matrix):
-            mat_rot = np.array(coord_transform)[:3, :3]
-            normals = normals @ mat_rot.T
-            norms = np.linalg.norm(normals, axis=1, keepdims=True)
-            norms[norms == 0] = 1 
-            normals /= norms
-            
-        mesh_data.normals_split_custom_set_from_vertices(normals)
-    
     mesh_data.update(calc_edges=True)
 
     # --- UVs ---
@@ -150,6 +137,31 @@ def import_mesh_object(bl_mesh: dsts_formats.Mesh, armature_obj, materials_dict,
 
             # Set the data for the new color attribute
             color_layer.data.foreach_set("color", loop_colors)
+
+    # --- NORMALS ---
+    if "normal" in attr_map:
+        normals = extract_attribute(packed, stride, num_verts, attr_map["normal"])
+        
+        if coord_transform and isinstance(coord_transform, Matrix):
+            mat_rot = np.array(coord_transform)[:3, :3]
+            normals = normals @ mat_rot.T
+            norms = np.linalg.norm(normals, axis=1, keepdims=True)
+            norms[norms == 0] = 1 
+            normals /= norms
+            
+        # 1. MANDATORY: Set all faces to Smooth.
+        # Without this, Blender treats faces as Flat, fighting the custom normals during deformation.
+        mesh_data.polygons.foreach_set("use_smooth", [True] * len(mesh_data.polygons))
+        
+        # 2. Set the custom normals (These are loop/corner normals)
+        mesh_data.normals_split_custom_set_from_vertices(normals)
+        
+        # 3. Validate the mesh
+        # This ensures the custom normal data block is properly locked and index-matched.
+        mesh_data.validate(clean_customdata=False)
+        
+        # 4. Optional: If you rely on Normal Maps, calculate tangents now
+        mesh_data.calc_tangents()
     
     # --- OBJECT ---
     obj = bpy.data.objects.new(bl_mesh.name, mesh_data)
