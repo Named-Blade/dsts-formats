@@ -329,8 +329,13 @@ def export_mesh_object(mesh_obj, coord_transform=Matrix.Rotation(math.radians(-9
 
     indices = np.empty(len(mesh.loop_triangles) * 3, dtype=np.int32)
     mesh.loop_triangles.foreach_get("vertices", indices)
+    
+    triangle_primitive = 1
 
-    return dsts_formats.Mesh(
+    mesh = dsts_formats.Mesh(
         positions,
-        indices
+        indices,
+        triangle_primitive
     )
+
+    return mesh

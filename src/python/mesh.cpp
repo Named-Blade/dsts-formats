@@ -236,8 +236,10 @@ void bind_mesh(py::module_ &m) {
     py::class_<Mesh>(m, "Mesh")
         .def(py::init<>())
         .def(py::init([](py::array_t<float, py::array::c_style | py::array::forcecast> positions,
-                         py::array_t<uint32_t, py::array::c_style | py::array::forcecast> triangles) {
+                         py::array_t<uint32_t, py::array::c_style | py::array::forcecast> triangles,
+                        uint16_t primitive
 
+        ) {
             if (positions.ndim() != 2 || positions.shape(1) != 3) {
                 throw std::runtime_error("positions must be a (N, 3) float32 array");
             }
@@ -252,7 +254,10 @@ void bind_mesh(py::module_ &m) {
             float* posPtr = positions.mutable_data();
             uint32_t* trisPtr = triangles.mutable_data();
 
-            return new Mesh(vertexCount, triangleCount, posPtr, trisPtr);
+            Mesh mesh(vertexCount, triangleCount, posPtr, trisPtr);
+            mesh.primitive = (binary::PrimitiveType)primitive;
+
+            return mesh;
         }))
         .def_property("name", 
             [](const Mesh &m) { return m.name; }, 
