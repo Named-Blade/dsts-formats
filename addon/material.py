@@ -204,6 +204,11 @@ def resolve_material(collection, mat, mat_data, tex_folder):
             else:
                 g_links.new(tex_node.outputs["Color"], principled.inputs["Base Color"])
 
+        if uniform.parameter_name == "LightPixelProj":
+            tex_node.image.colorspace_settings.name = 'sRGB'
+            g_links.new(tex_node.outputs["Color"], principled.inputs["Emission Color"])
+            principled.inputs["Emission Strength"].default_value = 1.0
+
         elif uniform.parameter_name == "OverlayNormalSampler" and is_eye:
             tex_node.image.colorspace_settings.name = 'sRGB'
             # Connect Offset Vector
