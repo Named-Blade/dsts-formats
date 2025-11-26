@@ -83,6 +83,29 @@ void bind_material(py::module_ &m) {
         .def_property("parameter_name",
             &dsts::geom::ShaderSetting::getParameterName,
             &dsts::geom::ShaderSetting::setParameterName)
+        .def_property("value", [](const dsts::geom::ShaderSetting &s){
+            constexpr size_t n = sizeof(s.payload.payload);
+            return py::memoryview::from_buffer(
+                (const uint8_t*)s.payload.payload,
+                { n },
+                { sizeof(uint8_t) }
+            );
+        },[](dsts::geom::ShaderSetting &s, py::bytes b){
+            constexpr size_t n = sizeof(s.payload.payload);
+
+            py::buffer_info info(py::buffer(b).request());
+            size_t input_size = info.size; 
+            const uint8_t* src = static_cast<const uint8_t*>(info.ptr);
+            uint8_t* value = static_cast<uint8_t*>(s.payload.payload);
+
+            if (input_size >= n) {
+                memcpy(value, src, n);
+            } else {
+                memcpy(value, src, input_size);
+                memset(value + input_size, 0, n - input_size);
+            }
+
+        })
         .def("__repr__", [](const dsts::geom::ShaderSetting &s){return "<Setting :" + s.parameter_name + ">";});
 
     py::bind_vector<std::vector<dsts::geom::ShaderUniform>>(m, "ShaderUniformList");
