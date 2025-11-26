@@ -74,6 +74,15 @@ def get_collection_eye_offset_group(collection):
 
     return group
 
+def get_image(tex_path):
+    tex_path = bpy.path.abspath(tex_path)
+
+    for img in bpy.data.images:
+        if bpy.path.abspath(img.filepath) == tex_path:
+            return img
+
+    return bpy.data.images.load(tex_path)
+
 def resolve_material(collection, mat, mat_data, tex_folder):
 
     mat.use_nodes = True
@@ -193,7 +202,7 @@ def resolve_material(collection, mat, mat_data, tex_folder):
             continue
 
         tex_node = g_nodes.new("ShaderNodeTexImage")
-        tex_node.image = bpy.data.images.load(tex_path)
+        tex_node.image = get_image(tex_path)
         tex_node.label = "DSTS-" + uniform.parameter_name
 
         if uniform.parameter_name == "DiffuseColor":
