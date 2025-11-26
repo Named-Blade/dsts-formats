@@ -171,7 +171,7 @@ def import_mesh_object(bl_mesh: dsts_formats.Mesh, armature_obj, materials_dict,
         obj.data.materials.append(materials_dict[bl_mesh.material.name])
 
     # --- WEIGHTS (Fixed for single-bone cases) ---
-    if "index" in attr_map and "weight" in attr_map and armature_obj:
+    if False and "index" in attr_map and "weight" in attr_map and armature_obj:
         # 1. Map Bones
         palette_map = {}
         if bl_mesh.matrix_palette:
@@ -315,3 +315,22 @@ def import_mesh_object(bl_mesh: dsts_formats.Mesh, armature_obj, materials_dict,
         mod.object = armature_obj
 
     return obj
+
+def export_mesh_object(mesh_obj, coord_transform=Matrix.Rotation(math.radians(-90), 4, 'X')):
+    mesh = mesh_obj.data
+    
+    # -- GEOMETRY --
+    positions = np.empty(len(mesh.vertices) * 3, dtype=np.float32)
+    mesh.vertices.foreach_get("co", positions)
+    positions = positions.reshape(-1, 3)
+
+    mat = np.array(coord_transform)
+    positions = positions @ mat[:3, :3].T + mat[:3, 3]
+
+    indices = np.empty(len(mesh.loop_triangles) * 3, dtype=np.int32)
+    mesh.loop_triangles.foreach_get("vertices", indices)
+
+    return dsts_formats.Mesh(
+        positions,
+        indices
+    )

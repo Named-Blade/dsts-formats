@@ -235,6 +235,25 @@ void bind_mesh(py::module_ &m) {
     // Mesh binding
     py::class_<Mesh>(m, "Mesh")
         .def(py::init<>())
+        .def(py::init([](py::array_t<float, py::array::c_style | py::array::forcecast> positions,
+                         py::array_t<uint32_t, py::array::c_style | py::array::forcecast> triangles) {
+
+            if (positions.ndim() != 2 || positions.shape(1) != 3) {
+                throw std::runtime_error("positions must be a (N, 3) float32 array");
+            }
+
+            if (triangles.ndim() != 1) {
+                throw std::runtime_error("triangles must be a 1D uint32 array");
+            }
+
+            size_t vertexCount = positions.shape(0);
+            size_t triangleCount = triangles.shape(0);
+
+            float* posPtr = positions.mutable_data();
+            uint32_t* trisPtr = triangles.mutable_data();
+
+            return new Mesh(vertexCount, triangleCount, posPtr, trisPtr);
+        }))
         .def_property("name", 
             [](const Mesh &m) { return m.name; }, 
             &Mesh::setName)
@@ -247,6 +266,11 @@ void bind_mesh(py::module_ &m) {
         .def_readwrite("flag_5", &Mesh::flag_5)
         .def_readwrite("flag_6", &Mesh::flag_6)
         .def_readwrite("flag_7", &Mesh::flag_7)
+        .def_property("primitive", [](const Mesh &m){
+            return (uint16_t)m.primitive;
+        }, [](Mesh &m, uint16_t val){
+            m.primitive = (binary::PrimitiveType)val;
+        })
         .def_property("vertices",
             make_vector_property(&Mesh::vertices).first,
             make_vector_property(&Mesh::vertices).second

@@ -139,6 +139,21 @@ namespace dsts::geom
             bool flag_6;
             bool flag_7;
 
+            Mesh() = default;
+
+            Mesh(size_t vertexCount, size_t triangleCount, float* pos, uint32_t* tris) {
+                vertices.resize(vertexCount);
+                for (size_t i = 0; i < vertexCount; ++i) {
+                    const float* dataPtr = pos + 3 * i;
+                    vertices[i].position.setFromPtr<float>((const char *)dataPtr, 3);
+                }
+
+                indices.resize(triangleCount);
+                for (size_t i = 0; i < triangleCount; ++i) {
+                    indices[i] = tris[i];
+                }
+            }
+
             std::vector<uint32_t> get_indices_as_triangle_list() {
                 // Case 1: It's already a Triangle List
                 // If your internal 'indices' are uint16_t, we cast them to uint32_t for safety in Python/Blender
