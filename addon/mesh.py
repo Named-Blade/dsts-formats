@@ -171,7 +171,7 @@ def import_mesh_object(bl_mesh: dsts_formats.Mesh, armature_obj, materials_dict,
         obj.data.materials.append(materials_dict[bl_mesh.material.name])
 
     # --- WEIGHTS (Fixed for single-bone cases) ---
-    if False and "index" in attr_map and "weight" in attr_map and armature_obj:
+    if "index" in attr_map and "weight" in attr_map and armature_obj:
         # 1. Map Bones
         palette_map = {}
         if bl_mesh.matrix_palette:
