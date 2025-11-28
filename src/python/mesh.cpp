@@ -235,30 +235,47 @@ void bind_mesh(py::module_ &m) {
     // Mesh binding
     py::class_<Mesh>(m, "Mesh")
         .def(py::init<>())
-        .def(py::init([](py::array_t<float, py::array::c_style | py::array::forcecast> positions,
-                         py::array_t<uint32_t, py::array::c_style | py::array::forcecast> triangles,
-                        uint16_t primitive
-
-        ) {
-            if (positions.ndim() != 2 || positions.shape(1) != 3) {
-                throw std::runtime_error("positions must be a (N, 3) float32 array");
+        .def("set_vertex_count", [](Mesh &m, uint64_t count){
+            m.vertices.clear();
+            m.vertices.resize(count);
+        })
+        .def("set_position",[](Mesh &m, py::array_t<float, py::array::c_style | py::array::forcecast> positions){
+            if (positions.ndim() != 2 ||positions.shape(1) != 3) {
+                throw std::runtime_error("positions must be a (N, 3) float16 array");
             }
-
-            if (triangles.ndim() != 1) {
-                throw std::runtime_error("triangles must be a 1D uint32 array");
-            }
-
             size_t vertexCount = positions.shape(0);
-            size_t triangleCount = triangles.shape(0);
-
-            float* posPtr = positions.mutable_data();
-            uint32_t* trisPtr = triangles.mutable_data();
-
-            Mesh mesh(vertexCount, triangleCount, posPtr, trisPtr);
-            mesh.primitive = (binary::PrimitiveType)primitive;
-
-            return mesh;
-        }))
+            const float* ptr = (positions.data());
+            for (size_t i = 0; i < vertexCount; ++i) {
+                const float* dataPtr = ptr + 3 * i;
+                m.vertices[i].position.setFromPtr<float16>((const char *)dataPtr, 3);
+            }
+        })
+        .def("set_normal",[](Mesh &m, py::array normals){
+            if (normals.ndim() != 2 || normals.shape(1) != 3 || !normals.dtype().is(py::dtype("float16")) ) {
+                throw std::runtime_error("normals must be a (N, 3) float16 array");
+            }
+            size_t vertexCount = normals.shape(0);
+            const float16* ptr = reinterpret_cast<const float16*>(normals.data());
+            for (size_t i = 0; i < vertexCount; ++i) {
+                const float16* dataPtr = ptr + 3 * i;
+                m.vertices[i].normal.setFromPtr<float16>((const char *)dataPtr, 3);
+            }
+        })
+        .def("set_uv",[](Mesh &m, int uv, py::array_t<float, py::array::c_style | py::array::forcecast> uvs){
+            if (uvs.ndim() != 2 || uvs.shape(1) != 3) {
+                throw std::runtime_error("uvs must be a (N, 3) float32 array");
+            }
+            size_t vertexCount = uvs.shape(0);
+            float* ptr = uvs.mutable_data();
+            for (size_t i = 0; i < vertexCount; ++i) {
+                const float* dataPtr = ptr + 3 * i;
+                switch (uv) {
+                    case 1: m.vertices[i].uv1.setFromPtr<float>((const char *)dataPtr, 3); break;
+                    case 2: m.vertices[i].uv2.setFromPtr<float>((const char *)dataPtr, 3); break;
+                    case 3: m.vertices[i].uv3.setFromPtr<float>((const char *)dataPtr, 3); break;
+                }
+            }
+        })
         .def_property("name", 
             [](const Mesh &m) { return m.name; }, 
             &Mesh::setName)

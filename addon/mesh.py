@@ -324,18 +324,24 @@ def export_mesh_object(mesh_obj, coord_transform=Matrix.Rotation(math.radians(-9
     mesh.vertices.foreach_get("co", positions)
     positions = positions.reshape(-1, 3)
 
+    vertex_count = len(positions)
+
     mat = np.array(coord_transform)
     positions = positions @ mat[:3, :3].T + mat[:3, 3]
+
+    if vertex_count > 0xFFFF:
+        raise ValueError('Too many vertices')
 
     indices = np.empty(len(mesh.loop_triangles) * 3, dtype=np.int32)
     mesh.loop_triangles.foreach_get("vertices", indices)
     
     triangle_primitive = 1
 
-    mesh = dsts_formats.Mesh(
-        positions,
-        indices,
-        triangle_primitive
-    )
+    mesh.set_vertex_count(vertex_count)
+    mesh.set_position(positions)
+    mesh.indices = indices
+    mesh.primitive = triangle_primitive
+
+    mesh.name = mesh_data.name
 
     return mesh
