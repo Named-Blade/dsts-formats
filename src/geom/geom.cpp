@@ -210,7 +210,8 @@ namespace dsts::geom
                     if (skeleton.bones[i]->is_geometry) {
                         assert(ibpmEqual(ibpms[i], Ibpm()));
                     } else {
-                        assert(ibpmEqual(ibpms[i], ibpmFromMatrix(ComputeInverseBindPose(skeleton.bones[i]))));
+                        Ibpm computed = ibpmFromMatrix(ComputeInverseBindPose(skeleton.bones[i]));
+                        assert(ibpmEqual(ibpms[i], computed));
                     }
                 }
 

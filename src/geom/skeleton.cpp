@@ -115,9 +115,15 @@ namespace dsts::geom
 
                         uint16_t bone = boneParentPairs[parent_bones[i]][0];
                         uint16_t parent = boneParentPairs[parent_bones[i]][1];
+                        constexpr uint16_t noParent = 0x7FFF;
 
-                        constexpr uint16_t NoParent = 0x7FFF;
-                        if (parent != NoParent) {
+                        //????
+                        if (parent > noParent) {
+                            assert("Should only trigger for neptunemon I think?" && false);
+                            parent = parent - noParent;
+                        }
+
+                        if (parent != noParent) {
                             bones[bone]->parent = bones[parent];
                         }
                     } 
