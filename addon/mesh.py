@@ -347,6 +347,7 @@ def export_mesh_object(mesh_obj, coord_transform=Matrix.Rotation(math.radians(-9
     mesh.loops.foreach_get("vertex_index", loop_index)
     _, v_index = np.unique(loop_index, return_index=True)
 
+    # -- NORMALS --
     if mesh.has_custom_normals:
         loop_normals = np.empty(len(mesh.loops) * 3, dtype=np.float32)
         mesh.loops.foreach_get("normal", loop_normals)
@@ -365,10 +366,11 @@ def export_mesh_object(mesh_obj, coord_transform=Matrix.Rotation(math.radians(-9
 
         mesh_out.set_normal(vert_normals.astype(np.float16))
 
+    # -- UVS --
     for layer in mesh.uv_layers:
         for n in range(1,4):
             if f"uv{n}" == layer.name:
-                loop_uvs = loop_uvs = np.empty(len(mesh.loops) * 2, dtype=np.float32)
+                loop_uvs = np.empty(len(mesh.loops) * 2, dtype=np.float32)
                 layer.data.foreach_get("uv", loop_uvs)
                 loop_uvs = loop_uvs.reshape(-1, 2)
 
@@ -377,6 +379,20 @@ def export_mesh_object(mesh_obj, coord_transform=Matrix.Rotation(math.radians(-9
                 vert_uvs[loop_index[v_index]] = loop_uvs[v_index]
 
                 mesh_out.set_uv(n, vert_uvs)
+
+    # -- COLORS --
+    if "Color" in mesh.color_attributes:
+        color =  mesh.color_attributes["Color"].data
+
+        loop_colors = np.empty(len(mesh.loops) * 4, dtype=np.float32)
+        color.foreach_get("color", loop_colors)
+        loop_colors = np.clip(loop_colors* 255, 0, 255).astype(np.uint8)
+        loop_colors = loop_colors.reshape(-1, 4)
+
+        vert_colors = np.zeros((len(mesh.vertices), 4), dtype=np.uint8)
+        vert_colors[loop_index[v_index]] = loop_colors[v_index]
+
+        mesh_out.set_color(vert_colors)
 
 
     mesh_out.name = mesh.name

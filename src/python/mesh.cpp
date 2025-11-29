@@ -276,6 +276,17 @@ void bind_mesh(py::module_ &m) {
                 }
             }
         })
+        .def("set_color",[](Mesh &m, py::array_t<uint8_t, py::array::c_style | py::array::forcecast> colors){
+            if (colors.ndim() != 2 || colors.shape(1) != 4) {
+                throw std::runtime_error("colors must be a (N, 4) uint8 array");
+            }
+            size_t vertexCount = colors.shape(0);
+            uint8_t* ptr = colors.mutable_data();
+            for (size_t i = 0; i < vertexCount; ++i) {
+                const uint8_t* dataPtr = ptr + 4 * i;
+                m.vertices[i].color.setFromPtr<uint8_t>((const char *)dataPtr, 4);
+            }
+        })
         .def_property("name", 
             [](const Mesh &m) { return m.name; }, 
             &Mesh::setName)
