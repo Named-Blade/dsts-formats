@@ -213,6 +213,18 @@ def resolve_material(collection, mat, mat_data, tex_folder):
             else:
                 g_links.new(tex_node.outputs["Color"], principled.inputs["Base Color"])
 
+        if uniform.parameter_name == "OverlayMaskSampler":
+            tex_node.image.colorspace_settings.name = 'sRGB'
+
+            invert_node = g_nodes.new("ShaderNodeInvert")
+            sep_node = g_nodes.new("ShaderNodeSeparateColor")
+
+            g_links.new(tex_node.outputs["Color"], sep_node.inputs["Color"])
+            g_links.new(sep_node.outputs["Red"], invert_node.inputs["Color"])
+
+            g_links.new(sep_node.outputs["Green"], principled.inputs["Metallic"])
+            g_links.new(invert_node.outputs["Color"], principled.inputs["Roughness"])
+
         if uniform.parameter_name == "LightPixelProj":
             tex_node.image.colorspace_settings.name = 'sRGB'
             g_links.new(tex_node.outputs["Color"], principled.inputs["Emission Color"])
@@ -280,7 +292,9 @@ def resolve_material(collection, mat, mat_data, tex_folder):
                             bpy.types.ShaderNodeUVMap,
                             bpy.types.ShaderNodeCombineXYZ,
                             bpy.types.ShaderNodeVectorMath,
-                            bpy.types.ShaderNodeAttribute)):
+                            bpy.types.ShaderNodeAttribute,
+                            bpy.types.ShaderNodeInvert,
+                            bpy.types.ShaderNodeSeparateColor)):
             columns["utility"].append(n)
         elif isinstance(n, bpy.types.ShaderNodeGroup) and n.node_tree.name == f"{collection.name}_Eye_Offset":
             columns["input"].append(n)

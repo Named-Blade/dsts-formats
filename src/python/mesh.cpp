@@ -247,7 +247,7 @@ void bind_mesh(py::module_ &m) {
             const float* ptr = (positions.data());
             for (size_t i = 0; i < vertexCount; ++i) {
                 const float* dataPtr = ptr + 3 * i;
-                m.vertices[i].position.setFromPtr<float16>((const char *)dataPtr, 3);
+                m.vertices[i].position.setFromPtr<float>((const char *)dataPtr, 3);
             }
         })
         .def("set_normal",[](Mesh &m, py::array normals){
@@ -262,17 +262,17 @@ void bind_mesh(py::module_ &m) {
             }
         })
         .def("set_uv",[](Mesh &m, int uv, py::array_t<float, py::array::c_style | py::array::forcecast> uvs){
-            if (uvs.ndim() != 2 || uvs.shape(1) != 3) {
-                throw std::runtime_error("uvs must be a (N, 3) float32 array");
+            if (uvs.ndim() != 2 || uvs.shape(1) != 2) {
+                throw std::runtime_error("uvs must be a (N, 2) float32 array");
             }
             size_t vertexCount = uvs.shape(0);
             float* ptr = uvs.mutable_data();
             for (size_t i = 0; i < vertexCount; ++i) {
-                const float* dataPtr = ptr + 3 * i;
+                const float* dataPtr = ptr + 2 * i;
                 switch (uv) {
-                    case 1: m.vertices[i].uv1.setFromPtr<float>((const char *)dataPtr, 3); break;
-                    case 2: m.vertices[i].uv2.setFromPtr<float>((const char *)dataPtr, 3); break;
-                    case 3: m.vertices[i].uv3.setFromPtr<float>((const char *)dataPtr, 3); break;
+                    case 1: m.vertices[i].uv1.setFromPtr<float>((const char *)dataPtr, 2); break;
+                    case 2: m.vertices[i].uv2.setFromPtr<float>((const char *)dataPtr, 2); break;
+                    case 3: m.vertices[i].uv3.setFromPtr<float>((const char *)dataPtr, 2); break;
                 }
             }
         })

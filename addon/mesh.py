@@ -337,11 +337,48 @@ def export_mesh_object(mesh_obj, coord_transform=Matrix.Rotation(math.radians(-9
     
     triangle_primitive = 1
 
-    mesh.set_vertex_count(vertex_count)
-    mesh.set_position(positions)
-    mesh.indices = indices
-    mesh.primitive = triangle_primitive
+    mesh_out = dsts_formats.Mesh()
+    mesh_out.set_vertex_count(vertex_count)
+    mesh_out.set_position(positions)
+    mesh_out.indices = indices
+    mesh_out.primitive = triangle_primitive
 
-    mesh.name = mesh_data.name
+    loop_index = np.empty(len(mesh.loops), dtype=np.int32)
+    mesh.loops.foreach_get("vertex_index", loop_index)
+    _, v_index = np.unique(loop_index, return_index=True)
 
-    return mesh
+    if mesh.has_custom_normals:
+        loop_normals = np.empty(len(mesh.loops) * 3, dtype=np.float32)
+        mesh.loops.foreach_get("normal", loop_normals)
+        loop_normals = loop_normals.reshape(-1, 3)
+
+        vert_normals = np.zeros((len(mesh.vertices), 3), dtype=np.float32)
+
+        vert_normals[loop_index[v_index]] = loop_normals[v_index]
+
+        if coord_transform and isinstance(coord_transform, Matrix):
+            mat_rot = np.array(coord_transform)[:3, :3]
+            vert_normals = vert_normals @ mat_rot.T
+            lengths = np.linalg.norm(vert_normals, axis=1, keepdims=True)
+            lengths[lengths == 0] = 1
+            vert_normals = vert_normals / lengths  
+
+        mesh_out.set_normal(vert_normals.astype(np.float16))
+
+    for layer in mesh.uv_layers:
+        for n in range(1,4):
+            if f"uv{n}" == layer.name:
+                loop_uvs = loop_uvs = np.empty(len(mesh.loops) * 2, dtype=np.float32)
+                layer.data.foreach_get("uv", loop_uvs)
+                loop_uvs = loop_uvs.reshape(-1, 2)
+
+                vert_uvs = np.zeros((len(mesh.vertices), 2), dtype=np.float32)
+
+                vert_uvs[loop_index[v_index]] = loop_uvs[v_index]
+
+                mesh_out.set_uv(n, vert_uvs)
+
+
+    mesh_out.name = mesh.name
+
+    return mesh_out
