@@ -2,6 +2,8 @@ import bpy
 import os
 import re
 
+from . import dsts_formats
+
 def layout_columns(node_groups, column_map, x_step=300, y_step=-220):
     """
     Automatically lays out nodes inside a node tree in vertical columns.
@@ -327,3 +329,10 @@ def resolve_material(collection, mat, mat_data, tex_folder):
     output.location = (400, 0)
 
     links.new(group_node.outputs["Shader"], output.inputs["Surface"])
+
+def export_material(mat):
+    mat_out = dsts_formats.Material()
+
+    mat_out.name = mat.name
+
+    return mat_out

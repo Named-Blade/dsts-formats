@@ -56,7 +56,9 @@ class MY_OT_dsts_geom_export_operator(Operator, ExportHelper):
     def execute(self, context):
         from . import dsts_formats as f
         from .skeleton import export_skeleton
+        from .material import export_material
         from .mesh import export_mesh_object
+        
 
         g = f.Geom()
 
@@ -71,15 +73,20 @@ class MY_OT_dsts_geom_export_operator(Operator, ExportHelper):
             return {'CANCELLED'}
         g.skeleton = export_skeleton(armatures[0])
 
-        g.materials.append(f.Material())
+        name_to_mat = {}
+        for mat in {o.data.materials[0] for o in collection.objects if o.type == "MESH"}:
+            mat_data = export_material(mat)
+            g.materials.append(mat_data)
+            name_to_mat[mat_data.name] = mat_data
 
         for obj in collection.objects:
             if obj.type == "MESH":
                 mesh = export_mesh_object(obj, g.skeleton)
-                mesh.material = g.materials[0]
+                mat_name = obj.data.materials[0].name
+                mesh.material = name_to_mat[mat_name]
                 g.meshes.append(mesh)
 
-        for obj in [*g.skeleton.bones] + [*g.meshes]:
+        for obj in [*g.skeleton.bones] + [*g.materials] + [*g.meshes]:
             obj.name = re.sub("(\.[0-9]{3})?$", "", obj.name)
 
         g.to_file(self.filepath)
