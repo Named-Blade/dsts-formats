@@ -108,6 +108,43 @@ class MY_OT_dsts_geom_export_operator(Operator, ExportHelper):
 
         context.window_manager.fileselect_add(self)
         return {'RUNNING_MODAL'}
+    
+class ERROR_OT_window(bpy.types.Operator):
+    bl_idname = "wm.show_errors_window"
+    bl_label = "Import Errors"
+
+    errors: bpy.props.StringProperty()
+    window_name: bpy.props.StringProperty(default="Import Errors Window")
+    text_name: bpy.props.StringProperty(default="Import Errors")
+
+    def execute(self, context):
+        return {'FINISHED'}
+
+    def invoke(self, context, event):
+        # Duplicate the current area as a new window
+        bpy.ops.screen.area_dupli('INVOKE_DEFAULT')
+        new_window = context.window_manager.windows[-1]
+
+        # Change the new window's first area to a Text Editor
+        for area in new_window.screen.areas:
+            area.type = 'TEXT_EDITOR'
+            for space in area.spaces:
+                if space.type == 'TEXT_EDITOR':
+                    # Create a new text block with the errors
+                    text = bpy.data.texts.new(name=self.text_name)
+                    text.clear()
+                    text.write("Errors during import:\n\n"+self.errors)
+                    space.text = text
+
+                    # Scroll to top: set first visible line
+                    # Blender 4.5 uses text.current_line_index
+                    text.current_line_index = 0  # scrolls to first line
+                    space.top = 0  # ensure top line is visible
+
+        # Rename the workspace of the new window
+        new_window.screen.name = self.window_name
+
+        return {'FINISHED'}
 
 def menu_func_import(self, context):
     self.layout.operator(MY_OT_dsts_geom_import_operator.bl_idname, text="DSTS .geom import")
@@ -120,6 +157,7 @@ def register():
     bpy.types.TOPBAR_MT_file_import.append(menu_func_import)
     bpy.utils.register_class(MY_OT_dsts_geom_export_operator)
     bpy.types.TOPBAR_MT_file_export.append(menu_func_export)
+    bpy.utils.register_class(ERROR_OT_window)
     material_nodes.register()
 
 def unregister():
@@ -127,4 +165,5 @@ def unregister():
     bpy.utils.unregister_class(MY_OT_dsts_geom_import_operator)
     bpy.types.TOPBAR_MT_file_export.remove(menu_func_export)
     bpy.utils.unregister_class(MY_OT_dsts_geom_export_operator)
+    bpy.utils.unregister_class(ERROR_OT_window)
     material_nodes.unregister()

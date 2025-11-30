@@ -214,7 +214,7 @@ namespace dsts::geom
                         Ibpm computed = ibpmFromMatrix(ComputeInverseBindPose(skeleton.bones[i]));
                         ASSERT_OR_THROW(ibpmEqual(ibpms[i], computed), ([this, &i, &ibpms, &computed](){
                             std::ostringstream oss;
-                            oss << "Ibpm doesn't match on: " << this->skeleton.bones[i]->name << std::endl;
+                            oss << "Ibpm does not match on: " << this->skeleton.bones[i]->name << std::endl;
                             oss << "Ibpm:" << std::endl;
                             oss << printTransform(DecomposeMatrix(MatrixFromIbpm(ibpms[i]).inverse())) << std::endl;
                             oss << "Bone:" << std::endl;

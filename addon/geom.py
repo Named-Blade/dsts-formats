@@ -8,6 +8,9 @@ from . import dsts_formats
 from pathlib import Path
 
 def import_geom(context, filepath):
+    error_state_old = dsts_formats.get_throw_errors()
+    dsts_formats.set_throw_errors(False)
+
     geom = dsts_formats.Geom.from_file(filepath)
 
     # Create collection
@@ -39,4 +42,11 @@ def import_geom(context, filepath):
             new_collection
         )
 
+    error_list = dsts_formats.get_error_list()
+    dsts_formats.set_error_list([])
+
+    if error_list:
+        bpy.ops.wm.show_errors_window('INVOKE_DEFAULT', errors="\n\n".join(error_list))
+
+    dsts_formats.set_throw_errors(error_state_old)
     return new_collection
