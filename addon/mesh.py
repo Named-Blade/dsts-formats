@@ -394,6 +394,30 @@ def export_mesh_object(mesh_obj, coord_transform=Matrix.Rotation(math.radians(-9
 
         mesh_out.set_color(vert_colors)
 
+    # -- TANGENTS --
+    if "uv1" in mesh.uv_layers:
+        mesh.calc_tangents(uvmap="uv1")
+        
+        loop_tangents = np.empty(len(mesh.loops) * 3, dtype=np.float32)
+        loop_tangent_signs = np.empty(len(mesh.loops), dtype=np.float32)
+        mesh.loops.foreach_get("tangent", loop_tangents)
+        mesh.loops.foreach_get("bitangent_sign", loop_tangent_signs)
+        loop_tangents = loop_tangents.reshape(-1, 3)
+
+        if coord_transform and isinstance(coord_transform, Matrix):
+            mat_rot = np.array(coord_transform)[:3, :3]
+            loop_tangents = loop_tangents @ mat_rot.T
+            lengths = np.linalg.norm(loop_tangents, axis=1, keepdims=True)
+            lengths[lengths == 0] = 1
+            loop_tangents = loop_tangents / lengths
+
+        loop_tangents = np.column_stack([loop_tangents, loop_tangent_signs])
+
+        vert_tangents = np.zeros((len(mesh.vertices), 4), dtype=np.float32)
+        vert_tangents[loop_index[v_index]] = loop_tangents[v_index]
+
+        mesh_out.set_tangent(vert_tangents.astype(np.float16))
+
 
     mesh_out.name = mesh.name
 

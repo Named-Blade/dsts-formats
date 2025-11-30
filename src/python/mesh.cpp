@@ -287,6 +287,17 @@ void bind_mesh(py::module_ &m) {
                 m.vertices[i].color.setFromPtr<uint8_t>((const char *)dataPtr, 4);
             }
         })
+        .def("set_tangent",[](Mesh &m, py::array tangents){
+            if (tangents.ndim() != 2 || tangents.shape(1) != 4 || !tangents.dtype().is(py::dtype("float16")) ) {
+                throw std::runtime_error("tangents must be a (N, 4) float16 array");
+            }
+            size_t vertexCount = tangents.shape(0);
+            const float16* ptr = reinterpret_cast<const float16*>(tangents.mutable_data());
+            for (size_t i = 0; i < vertexCount; ++i) {
+                const float16* dataPtr = ptr + 4 * i;
+                m.vertices[i].tangent.setFromPtr<float16>((const char *)dataPtr, 4);
+            }
+        })
         .def_property("name", 
             [](const Mesh &m) { return m.name; }, 
             &Mesh::setName)
