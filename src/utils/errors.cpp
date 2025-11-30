@@ -9,7 +9,16 @@ bool throwErrors = true;
 std::vector<std::string> errorList{};
 
 #ifndef NDEBUG
-    #define ASSERT_OR_THROW(cond, msg) assert(cond)
+    #define ASSERT_OR_THROW(cond, msg) \
+        do { \
+            if (!(cond)) { \
+                if (throwErrors) { \
+                    assert(cond); \
+                } else { \
+                    errorList.push_back(msg); \
+                } \
+            } \
+        } while(0)
 #else
     #define ASSERT_OR_THROW(cond, msg) \
         do { \

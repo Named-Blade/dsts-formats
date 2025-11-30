@@ -218,7 +218,7 @@ namespace dsts::geom
                 }
 
                 //sanity tests
-                assert(ibpms.size() == skeleton.bones.size());
+                ASSERT_OR_THROW(ibpms.size() == skeleton.bones.size(), "Ibpm count does not match skeleton bone count");
                 for (int i = 0; i < skeleton.bones.size(); i++) {
                     if (skeleton.bones[i]->is_geometry) {
                         ASSERT_OR_THROW(ibpmEqual(ibpms[i], Ibpm()), ([this, &i, &ibpms](){
@@ -349,8 +349,15 @@ namespace dsts::geom
                                 if (ch == '\0') break;
                                 result += ch;
                             }
-                            assert(result.size() == uniform_bin.payload.texture.texture_name_length);
                             uniform.value = result;
+                            ASSERT_OR_THROW(result.size() == uniform_bin.payload.texture.texture_name_length, ([&uniform, &uniform_bin, &result, &material](){
+                                std::ostringstream oss;
+                                oss << "Uniform \"" << uniform.parameter_name << "\" In material \"" << material.name << "\":" << std::endl;
+                                oss << "Texture name does not match length" << std::endl;
+                                oss << "Name  : " << result << std::endl;
+                                oss << "Length: " << uniform_bin.payload.texture.texture_name_length;
+                                return oss.str();
+                            })());
 
                             uniform.unknown_0xC = uniform_bin.payload.texture.unknown_0xC;
 
@@ -400,8 +407,8 @@ namespace dsts::geom
                 f.seekg(base + header.clut_offset);
                 f.read(reinterpret_cast<char*>(&clut), sizeof(binary::Clut));
 
-                assert(header.light_count == 0);
-                assert(header.camera_count == 0);
+                ASSERT_OR_THROW(header.light_count == 0, "Geom contains Light data, this is not yet implemented");
+                ASSERT_OR_THROW(header.camera_count == 0,"Geom contains Camera data, this is not yet implemented");
             }
 
             void write(std::ostream& f, int base = 0){
@@ -472,7 +479,6 @@ namespace dsts::geom
 
                     {
                         auto weightOpt = getAttributeByAtype(attrData.attributes, binary::Atype::Weight);
-                        assert(weightOpt);
                         binary::MeshAttribute &weight = weightOpt->get();
                         uint8_t vertexGroupCount = weight.count;
 
