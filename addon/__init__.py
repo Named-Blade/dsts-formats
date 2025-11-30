@@ -1,6 +1,7 @@
 import bpy
+import os
 from bpy_extras.io_utils import ImportHelper, ExportHelper
-from bpy.props import StringProperty
+from bpy.props import StringProperty, EnumProperty
 from bpy.types import Operator
 
 from .geom import import_geom
@@ -19,7 +20,6 @@ class MY_OT_dsts_geom_import_operator(Operator, ImportHelper):
     bl_idname = "import_scene.dsts_geom_import"
     bl_label = "DSTS .geom import"
 
-    # Filter file extensions (optional)
     filename_ext = ".geom"
     filter_glob: StringProperty(
         default="*.geom",
@@ -36,7 +36,15 @@ class MY_OT_dsts_geom_export_operator(Operator, ExportHelper):
     bl_idname = "export_scene.dsts_geom_export"
     bl_label = "DSTS .geom export"
 
-    # Filter file extensions (optional)
+    def collection_items(self, context):
+        return [(col.name, col.name, "") for col in bpy.data.collections]
+    
+    collection_name: EnumProperty(
+        name="Collection",
+        description="Select collection to export",
+        items=collection_items
+    )
+
     filename_ext = ".geom"
     filter_glob: StringProperty(
         default="*.geom",
@@ -49,19 +57,41 @@ class MY_OT_dsts_geom_export_operator(Operator, ExportHelper):
         from .mesh import export_mesh_object
 
         g = f.Geom()
-        g.skeleton = export_skeleton([o for o in bpy.data.objects if o.type == "ARMATURE"][0])
+
+        collection = bpy.data.collections.get(self.collection_name)
+        if not collection:
+            self.report({'ERROR'}, f"Collection '{self.collection_name}' not found")
+            return {'CANCELLED'}
+
+        armatures = [o for o in collection.objects if o.type == "ARMATURE"]
+        if not armatures:
+            self.report({'ERROR'}, "No armature found in collection")
+            return {'CANCELLED'}
+        g.skeleton = export_skeleton(armatures[0])
+
         g.materials.append(f.Material())
 
-        for obj in bpy.data.objects:
+        for obj in collection.objects:
             if obj.type == "MESH":
                 mesh = export_mesh_object(obj, g.skeleton)
-                mesh.matrix_palette.append(g.skeleton.bones[0])
                 mesh.material = g.materials[0]
                 g.meshes.append(mesh)
 
         g.to_file(self.filepath)
-
         return {'FINISHED'}
+    
+    def invoke(self, context, event):
+
+        collection = bpy.data.collections.get(self.collection_name)
+        if collection:
+            blend_dir = os.path.dirname(bpy.data.filepath)
+            default_name = f"{collection.name}.geom"
+            self.filepath = os.path.join(blend_dir, default_name)
+        else:
+            self.filepath = ""
+
+        context.window_manager.fileselect_add(self)
+        return {'RUNNING_MODAL'}
 
 def menu_func_import(self, context):
     self.layout.operator(MY_OT_dsts_geom_import_operator.bl_idname, text="DSTS .geom import")
