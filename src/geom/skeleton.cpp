@@ -12,6 +12,7 @@
 #include "../utils/stream.cpp"
 #include "../utils/hash.cpp"
 #include "../utils/quaternion.cpp"
+#include "../utils/errors.cpp"
 #include "binary/skeleton.hpp"
 
 namespace dsts::geom
@@ -71,7 +72,7 @@ namespace dsts::geom
                 f.read(reinterpret_cast<char*>(&header), sizeof(binary::SkeletonHeader));
 
                 if (header.bone_count > 0) {
-                    assert(header.bone_parent_vector_size == 2);
+                    ASSERT_OR_THROW(header.bone_parent_vector_size == 2, "bone parent vectors are not of size 2");
                     std::vector<std::array<uint16_t, 2>> boneParentPairs(header.bone_parent_pairs_count);
                     if (!boneParentPairs.empty()) {
                         f.read(reinterpret_cast<char*>(boneParentPairs.data()), sizeof(uint16_t) * 2 * boneParentPairs.size());
@@ -119,7 +120,6 @@ namespace dsts::geom
 
                         //????
                         if (parent > noParent) {
-                            assert("Should only trigger for neptunemon I think?" && false);
                             parent = parent - noParent;
                         }
 
@@ -130,7 +130,7 @@ namespace dsts::geom
                 }
 
                 if (header.float_channel_count > 0) {
-                    assert(header.float_channel_count == 0);
+                    ASSERT_OR_THROW(header.float_channel_count == 0, "float channels encountered, these are not yet supported");
 
                     // std::vector<uint32_t> name_hashes(header.float_channel_count);
                     // f.seekg(header.float_channel_name_hashes_offset
@@ -170,8 +170,6 @@ namespace dsts::geom
             }
 
             uint64_t write(std::ostream& f, int skeleton_base = 0, int base = 0) {
-                assert(allParentsValid());
-
                 binary::SkeletonHeader header;
                 f.seekp(skeleton_base + base);
                 alignStream(f, 0x10);

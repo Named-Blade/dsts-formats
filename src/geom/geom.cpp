@@ -270,6 +270,12 @@ namespace dsts::geom
                     assert(boundingEquals(info,h_info));
                 }
 
+                std::unordered_map<uint32_t, std::string> hash_to_material_name;
+                for (const auto& name : material_names) {
+                    uint32_t hash = crc32((const uint8_t*)name.c_str(), name.length());
+                    hash_to_material_name[hash] = name;
+                }
+
                 f.seekg(base + header.material_offset);
                 for (int i = 0; i < header.material_count ; i++){
                     std::shared_ptr<Material> mat_ptr = std::make_shared<Material>();
@@ -279,6 +285,11 @@ namespace dsts::geom
                     f.read(reinterpret_cast<char*>(&materialHeader), sizeof(materialHeader));
 
                     material.name_hash = materialHeader.name_hash;
+
+                    auto it = hash_to_material_name.find(material.name_hash);
+                    if (it != hash_to_material_name.end()) {
+                        material.name = it->second;
+                    }
 
                     material.unknown_0x314 = materialHeader.unknown_0x314;
                     material.unknown_0x318 = materialHeader.unknown_0x318;
@@ -306,9 +317,18 @@ namespace dsts::geom
                         uniform.unknown_0x18 = uniform_bin.unknown_0x18;
                         uniform.unknown_0x1C = uniform_bin.unknown_0x1C;
 
-                        assert(uniform.unknown_0x14 = 0xFFFFFFFF);
-                        assert(uniform.unknown_0x18 = 0xFFFFFFFF);
-                        assert(uniform.unknown_0x1C = 0xFFFFFF);
+                        ASSERT_OR_THROW((
+                            uniform.unknown_0x14 == 0xFFFFFFFF && 
+                            uniform.unknown_0x18 == 0xFFFFFFFF && 
+                            uniform.unknown_0x1C == 0xFFFFFF
+                        ), ([&uniform, &material](){
+                            std::ostringstream oss;
+                            oss << "Uniform \"" << uniform.parameter_name << "\" In material \"" << material.name << "\" does not match expected padding" << std::endl;
+                            oss <<  "0x" << std::setw(8) << std::setfill('0') << std::hex << uniform.unknown_0x14 << std::dec << std::endl;
+                            oss <<  "0x" << std::setw(8) << std::setfill('0') << std::hex << uniform.unknown_0x18 << std::dec << std::endl;
+                            oss <<  "0x" << std::setw(8) << std::setfill('0') << std::hex << uniform.unknown_0x1C << std::dec;
+                            return oss.str();
+                        })());
 
                         if (uniform_bin.float_count > 0) {
 
@@ -353,27 +373,23 @@ namespace dsts::geom
                         setting.unknown_0x18 = setting_bin.unknown_0x18;
                         setting.unknown_0x1C = setting_bin.unknown_0x1C;
 
-                        assert(setting.unknown_0x14 = 0xFFFFFFFF);
-                        assert(setting.unknown_0x18 = 0xFFFFFFFF);
-                        assert(setting.unknown_0x1C = 0xFFFFFF);
+                        ASSERT_OR_THROW((
+                            setting.unknown_0x14 == 0xFFFFFFFF && 
+                            setting.unknown_0x18 == 0xFFFFFFFF && 
+                            setting.unknown_0x1C == 0xFFFFFF
+                        ), ([&setting, &material](){
+                            std::ostringstream oss;
+                            oss << "Setting \"" << setting.parameter_name << "\" In material \"" << material.name << "\" does not match expected padding" << std::endl;
+                            oss <<  "0x" << std::setw(8) << std::setfill('0') << std::hex << setting.unknown_0x14 << std::dec << std::endl;
+                            oss <<  "0x" << std::setw(8) << std::setfill('0') << std::hex << setting.unknown_0x18 << std::dec << std::endl;
+                            oss <<  "0x" << std::setw(8) << std::setfill('0') << std::hex << setting.unknown_0x1C << std::dec;
+                            return oss.str();
+                        })());
 
                         material.settings.push_back(setting);
                     }
 
                     materials.push_back(std::move(mat_ptr));
-                }
-
-                std::unordered_map<uint32_t, std::string> hash_to_material_name;
-                for (const auto& name : material_names) {
-                    uint32_t hash = crc32((const uint8_t*)name.c_str(), name.length());
-                    hash_to_material_name[hash] = name;
-                }
-
-                for (auto& material : materials) {
-                    auto it = hash_to_material_name.find(material->name_hash);
-                    if (it != hash_to_material_name.end()) {
-                        material->name = it->second;
-                    }
                 }
 
                 for (int i = 0; i < meshes.size() ; i++) {
