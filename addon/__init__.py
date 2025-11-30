@@ -1,10 +1,12 @@
 import bpy
 import os
+import re
 from bpy_extras.io_utils import ImportHelper, ExportHelper
 from bpy.props import StringProperty, EnumProperty
 from bpy.types import Operator
 
 from .geom import import_geom
+from .nlst import write_nlst
 from .data import material_nodes
 
 bl_info = {
@@ -77,7 +79,14 @@ class MY_OT_dsts_geom_export_operator(Operator, ExportHelper):
                 mesh.material = g.materials[0]
                 g.meshes.append(mesh)
 
+        for obj in [*g.skeleton.bones] + [*g.meshes]:
+            obj.name = re.sub("(\.[0-9]{3})?$", "", obj.name)
+
         g.to_file(self.filepath)
+
+        with open(os.path.splitext(self.filepath)[0]+".nlst", "wb") as f:
+            f.write(write_nlst(g).encode("utf-8"))
+
         return {'FINISHED'}
     
     def invoke(self, context, event):
