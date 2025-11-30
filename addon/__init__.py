@@ -71,6 +71,7 @@ class MY_OT_dsts_geom_export_operator(Operator, ExportHelper):
         if not armatures:
             self.report({'ERROR'}, "No armature found in collection")
             return {'CANCELLED'}
+        
         g.skeleton = export_skeleton(armatures[0])
 
         name_to_mat = {}
@@ -79,12 +80,11 @@ class MY_OT_dsts_geom_export_operator(Operator, ExportHelper):
             g.materials.append(mat_data)
             name_to_mat[mat_data.name] = mat_data
 
-        for obj in collection.objects:
-            if obj.type == "MESH":
-                mesh = export_mesh_object(obj, g.skeleton)
-                mat_name = obj.data.materials[0].name
-                mesh.material = name_to_mat[mat_name]
-                g.meshes.append(mesh)
+        for obj in [o for o in collection.objects if o.type == "MESH"]:
+            mesh = export_mesh_object(obj, g.skeleton)
+            mat_name = obj.data.materials[0].name
+            mesh.material = name_to_mat[mat_name]
+            g.meshes.append(mesh)
 
         for obj in [*g.skeleton.bones] + [*g.materials] + [*g.meshes]:
             obj.name = re.sub("(\.[0-9]{3})?$", "", obj.name)

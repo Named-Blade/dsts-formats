@@ -496,10 +496,11 @@ namespace dsts::geom
         return true;
     }
 
-    void printTransform(binary::BoneTransform b) {
-        std::cout << "Transform:" << std::endl;
-        std::cout << b.quaternion[0] << " " << b.quaternion[1] << " " << b.quaternion[2] << " " << b.quaternion[3] << std::endl;
-        std::cout << b.position[0] << " " << b.position[1] << " " << b.position[2] << " " << b.position[3] << std::endl;
-        std::cout << b.scale[0] << " " << b.scale[1] << " " << b.scale[2] << " " << b.scale[3] << std::endl << std::endl;
+    std::string printTransform(binary::BoneTransform b) {
+        std::ostringstream oss;
+        oss << "quat :" << b.quaternion[0] << " " << b.quaternion[1] << " " << b.quaternion[2] << " " << b.quaternion[3] << std::endl;
+        oss << "pos  :" <<b.position[0] << " " << b.position[1] << " " << b.position[2] << " " << b.position[3] << std::endl;
+        oss << "scale:" << b.scale[0] << " " << b.scale[1] << " " << b.scale[2] << " " << b.scale[3];
+        return oss.str();
     }
 }

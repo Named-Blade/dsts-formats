@@ -6,6 +6,8 @@
 #include <pybind11/stl_bind.h>
 #include <pybind11/eval.h>
 
+#include "../utils/errors.cpp"
+
 PYBIND11_DECLARE_HOLDER_TYPE(T, std::shared_ptr<T>);
 
 namespace py = pybind11;
@@ -33,6 +35,11 @@ auto make_vector_property(VecType Class::*member) {
     );
 }
 
-void header_bindings(pybind11::module_ &m) {
-    //pass
+
+void header_bindings(py::module_ &m) {
+    m.def("get_throw_errors", []() { return throwErrors; });
+    m.def("set_throw_errors", [](bool val) { throwErrors = val; });
+
+    m.def("get_error_list", []() { return errorList; });
+    m.def("set_error_list", [](const std::vector<std::string>& val) { errorList = val; });
 }

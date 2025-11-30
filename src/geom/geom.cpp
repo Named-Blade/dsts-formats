@@ -18,6 +18,7 @@
 #include "../utils/hash.cpp"
 #include "../utils/stream.cpp"
 #include "../utils/align.cpp"
+#include "../utils/errors.cpp"
 
 namespace dsts::geom
 {  
@@ -211,7 +212,15 @@ namespace dsts::geom
                         assert(ibpmEqual(ibpms[i], Ibpm()));
                     } else {
                         Ibpm computed = ibpmFromMatrix(ComputeInverseBindPose(skeleton.bones[i]));
-                        assert(ibpmEqual(ibpms[i], computed));
+                        ASSERT_OR_THROW(ibpmEqual(ibpms[i], computed), ([this, &i, &ibpms, &computed](){
+                            std::ostringstream oss;
+                            oss << "Ibpm doesn't match on: " << this->skeleton.bones[i]->name << std::endl;
+                            oss << "Ibpm:" << std::endl;
+                            oss << printTransform(DecomposeMatrix(MatrixFromIbpm(ibpms[i]).inverse())) << std::endl;
+                            oss << "Bone:" << std::endl;
+                            oss << printTransform(DecomposeMatrix(MatrixFromIbpm(computed).inverse()));
+                            return oss.str();
+                        })() );
                     }
                 }
 
