@@ -1,6 +1,7 @@
 #pragma once
 
 #include "enums.hpp"
+#include "shader_params_bin.h"
 
 namespace dsts::geom::binary
 {   
@@ -70,7 +71,7 @@ namespace dsts::geom::binary
         char name[0x20];
     };
 
-    constexpr uint64_t shaderParamNum = 791;
+    constexpr uint64_t shaderParamNum = shader_params_bin_len / sizeof(ShaderParamDef);
 
     #pragma pack(pop)
 }
