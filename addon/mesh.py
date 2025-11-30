@@ -216,97 +216,6 @@ def import_mesh_object(bl_mesh: dsts_formats.Mesh, armature_obj, materials_dict,
             if palette_idx in palette_map:
                 bone_name = palette_map[palette_idx]
                 obj.vertex_groups[bone_name].add([int(valid_v_ids[i])], float(valid_weights[i]), 'ADD')
-
-    # --- TANGENTS: Compute & Compare ---
-    if "tangent" in attr_map and mesh_data.uv_layers:
-        # Blender needs tangents enabled
-        mesh_data.calc_tangents()
-
-        # Extract custom packed tangents
-        packed_tangents = extract_attribute(packed, stride, num_verts, attr_map["tangent"])
-        if coord_transform and isinstance(coord_transform, Matrix):
-            mat_rot = np.array(coord_transform)[:3, :3]
-            if packed_tangents.shape[1] == 4:
-                packed_tan_xyz = packed_tangents[:, :3]
-                packed_tan_w   = packed_tangents[:, 3]
-            else:
-                packed_tan_xyz = packed_tangents
-                packed_tan_w   = None
-
-            # Apply coord transform (just like normals)
-            if coord_transform and isinstance(coord_transform, Matrix):
-                mat_rot = np.array(coord_transform)[:3, :3]
-                packed_tan_xyz = packed_tan_xyz @ mat_rot.T
-
-            # Re-normalize (safety)
-            lens = np.linalg.norm(packed_tan_xyz, axis=1, keepdims=True)
-            lens[lens == 0] = 1
-            packed_tan_xyz /= lens
-
-            # Recombine if w exists
-            if packed_tan_w is not None:
-                packed_tangents = np.column_stack([packed_tan_xyz, packed_tan_w])
-            else:
-                packed_tangents = packed_tan_xyz
-
-        # In many engines, tangent.w stores the sign (±1) used with bitangent reconstruction
-        has_w = packed_tangents.shape[1] == 4
-        packed_tan_xyz = packed_tangents[:, :3]
-        packed_tan_w = packed_tangents[:, 3] if has_w else None
-
-        # Prepare loop mappings
-        loop_vertex_indices = np.zeros(len(mesh_data.loops), dtype=np.int32)
-        mesh_data.loops.foreach_get("vertex_index", loop_vertex_indices)
-
-        # Blender loop tangents
-        bl_tangents = np.zeros((len(mesh_data.loops), 3), dtype=np.float32)
-        mesh_data.loops.foreach_get("tangent", bl_tangents.ravel())
-
-        # Blender bitangent sign
-        bl_bitangent_signs = np.zeros(len(mesh_data.loops), dtype=np.float32)
-        mesh_data.loops.foreach_get("bitangent_sign", bl_bitangent_signs)
-
-        # Build per-vertex tangent average (Blender's data is loop-based)
-        accum = np.zeros((num_verts, 3), dtype=np.float32)
-        counts = np.zeros(num_verts, dtype=np.int32)
-
-        for i, v in enumerate(loop_vertex_indices):
-            accum[v] += bl_tangents[i]
-            counts[v] += 1
-
-        # Avoid division by zero
-        counts[counts == 0] = 1
-        averaged_bl_tangents = accum / counts[:, None]
-
-        # Normalize
-        lens = np.linalg.norm(averaged_bl_tangents, axis=1, keepdims=True)
-        lens[lens == 0] = 1
-        averaged_bl_tangents /= lens
-
-        # --- Compare Packed vs Blender ---
-        diff = averaged_bl_tangents - packed_tan_xyz
-        errors = np.linalg.norm(diff, axis=1)
-
-        mean_err = float(np.mean(errors))
-        max_err = float(np.max(errors))
-        idx_max = int(np.argmax(errors))
-
-        print("\n--- Tangent Sanity Check ---")
-        print(f"Mean Error: {mean_err:.6f}")
-        print(f"Max Error : {max_err:.6f} (vertex {idx_max})")
-        print(f"Example:")
-        print(f"  Blender: {averaged_bl_tangents[idx_max]}")
-        print(f"  Packed : {packed_tan_xyz[idx_max]}")
-        print(f"  Δ      : {diff[idx_max]}")
-
-        if has_w:
-            print("\nBitangent sign check:")
-            # Compare signs at the loop level
-            packed_sign_per_loop = packed_tan_w[loop_vertex_indices]
-            sign_diff = np.abs(bl_bitangent_signs - packed_sign_per_loop)
-            mismatched_signs = np.sum(sign_diff > 0.1)
-            print(f"Mismatched bitangent signs: {mismatched_signs} / {len(mesh_data.loops)}")
-
     
     # --- PARENTING ---
     if armature_obj:
@@ -316,7 +225,7 @@ def import_mesh_object(bl_mesh: dsts_formats.Mesh, armature_obj, materials_dict,
 
     return obj
 
-def export_mesh_object(mesh_obj, coord_transform=Matrix.Rotation(math.radians(-90), 4, 'X')):
+def export_mesh_object(mesh_obj, skeleton = None, coord_transform = Matrix.Rotation(math.radians(-90), 4, 'X')):
     mesh = mesh_obj.data
     
     # -- GEOMETRY --
@@ -418,6 +327,28 @@ def export_mesh_object(mesh_obj, coord_transform=Matrix.Rotation(math.radians(-9
 
         mesh_out.set_tangent(vert_tangents.astype(np.float16))
 
+    if skeleton is not None:
+        mesh_out.matrix_palette = [b for b in skeleton.bones if b.name in mesh_obj.vertex_groups]
+        name_to_id = {b.name:i for i,b in enumerate(mesh.matrix_palette)}
+
+        groups_per_vertex = max([len(v.groups) for v in mesh.vertices])
+
+        if groups_per_vertex > 4:
+            raise ValueError("Too many vertex groups per vertex")
+        
+        vert_indices = np.zeros((len(mesh_obj.data.vertices), groups_per_vertex), dtype=np.uint8)
+        vert_weights = np.zeros((len(mesh_obj.data.vertices), groups_per_vertex), dtype=np.float32)
+
+        for vi, v in enumerate(mesh_obj.data.vertices):
+            for gi, g in enumerate(v.groups):
+                vert_indices[vi, gi] = name_to_id[mesh_obj.vertex_groups[g.group].name]
+                vert_weights[vi, gi] = g.weight
+        total = vert_weights[vi].sum()
+        if total > 0:
+            vert_weights[vi] /= total
+
+        mesh_out.set_index(vert_indices)
+        mesh_out.set_weight(vert_weights.astype(np.float16))
 
     mesh_out.name = mesh.name
 

@@ -298,6 +298,30 @@ void bind_mesh(py::module_ &m) {
                 m.vertices[i].tangent.setFromPtr<float16>((const char *)dataPtr, 4);
             }
         })
+        .def("set_index",[](Mesh &m, py::array_t<uint8_t, py::array::c_style | py::array::forcecast> indices){
+            if (indices.ndim() != 2 || indices.shape(1) > 4) {
+                throw std::runtime_error("indices must be an (N, <=4) uint8 array");
+            }
+            size_t vertexCount = indices.shape(0);
+            size_t groupCount = indices.shape(1);
+            uint8_t* ptr = indices.mutable_data();
+            for (size_t i = 0; i < vertexCount; ++i) {
+                const uint8_t* dataPtr = ptr + groupCount * i;
+                m.vertices[i].index.setFromPtr<uint8_t>((const char *)dataPtr, groupCount);
+            }
+        })
+        .def("set_weight",[](Mesh &m, py::array weights){
+            if (weights.ndim() != 2 || weights.shape(1) > 4 || !weights.dtype().is(py::dtype("float16")) ) {
+                throw std::runtime_error("weights must be an (N, <=4) float16 array");
+            }
+            size_t vertexCount = weights.shape(0);
+            size_t groupCount = weights.shape(1);
+            const float16* ptr =  reinterpret_cast<const float16*>(weights.mutable_data());
+            for (size_t i = 0; i < vertexCount; ++i) {
+                const float16* dataPtr = ptr + groupCount * i;
+                m.vertices[i].weight.setFromPtr<float16>((const char *)dataPtr, groupCount);
+            }
+        })
         .def_property("name", 
             [](const Mesh &m) { return m.name; }, 
             &Mesh::setName)
