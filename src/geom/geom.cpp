@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <variant>
+#include <iomanip>
 
 #include "binary/clut.hpp"
 #include "binary/enums.hpp"
@@ -40,7 +41,7 @@ namespace dsts::geom
                 f.seekg(base);
                 f.read(reinterpret_cast<char*>(&header), sizeof(binary::GeomHeader));
 
-                assert(header.version == 316);
+                ASSERT_OR_THROW(header.version == 316, "Geom version is not 316");
 
                 unknown_0x10 = header.unknown_0x10;
                 unknown_0x30 = header.unknown_0x30;
@@ -143,7 +144,13 @@ namespace dsts::geom
                         }
                         mesh.name = result;
 
-                        assert(mesh.name_hash == crc32((const uint8_t*)mesh.name.data(),mesh.name.size()));
+                        ASSERT_OR_THROW(mesh.name_hash == crc32((const uint8_t*)mesh.name.data(),mesh.name.size()), ([&mesh](){
+                            std::ostringstream oss;
+                            oss << "name does not match hash in: " << mesh.name << std::endl;
+                            oss << "hash: 0x" << std::setw(8) << std::setfill('0') << std::hex << mesh.name_hash << std::dec << std::endl; 
+                            oss << "calc: 0x" << std::setw(8) << std::setfill('0') << std::hex << crc32((const uint8_t*)mesh.name.data(),mesh.name.size()) << std::dec;
+                            return oss.str();
+                        })());
                     }
 
                     std::vector<binary::MeshAttribute> meshAttributes(meshHeaders[i].attribute_count);
@@ -176,7 +183,12 @@ namespace dsts::geom
                     f.seekg(base + meshHeaders[i].indices_offset);
                     f.read(reinterpret_cast<char*>(mesh.indices.data()), sizeof(uint16_t) * meshHeaders[i].index_count);
 
-                    assert(meshHeaders[i].controller_offset == 0);
+                    ASSERT_OR_THROW(meshHeaders[i].controller_offset == 0, ([&mesh](){
+                        std::ostringstream oss;
+                        oss << "Controller found in mesh: " << mesh.name << std::endl;
+                        oss << "This is not yet supported";
+                        return oss.str();
+                    })());
 
                     meshes.push_back(mesh);
                 }
@@ -209,7 +221,13 @@ namespace dsts::geom
                 assert(ibpms.size() == skeleton.bones.size());
                 for (int i = 0; i < skeleton.bones.size(); i++) {
                     if (skeleton.bones[i]->is_geometry) {
-                        assert(ibpmEqual(ibpms[i], Ibpm()));
+                        ASSERT_OR_THROW(ibpmEqual(ibpms[i], Ibpm()), ([this, &i, &ibpms](){
+                            std::ostringstream oss;
+                            oss << "Geometry Ibpm does not match identity: " << this->skeleton.bones[i]->name << std::endl;
+                            oss << "Ibpm:" << std::endl;
+                            oss << printTransform(DecomposeMatrix(MatrixFromIbpm(ibpms[i]).inverse()));
+                            return oss.str();
+                        })());
                     } else {
                         Ibpm computed = ibpmFromMatrix(ComputeInverseBindPose(skeleton.bones[i]));
                         ASSERT_OR_THROW(ibpmEqual(ibpms[i], computed), ([this, &i, &ibpms, &computed](){
