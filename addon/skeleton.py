@@ -1,8 +1,10 @@
 import bpy
 import mathutils
+from mathutils import Matrix, Vector
 import sys
 import statistics
 import math
+from . import dsts_formats
 
 def import_skeleton(skeleton, target_collection=None, coordinate_remap=None):
     """
@@ -151,3 +153,33 @@ def import_skeleton(skeleton, target_collection=None, coordinate_remap=None):
         )
 
     return armature_obj
+
+def export_skeleton(skeleton_obj, coord_transform = Matrix.Rotation(math.radians(-90), 4, 'X')):
+    skeleton = skeleton_obj.data
+    skeleton_out = dsts_formats.Skeleton()
+
+    name_to_bone = {}
+    for bone in skeleton.bones:
+        bone_out = dsts_formats.Bone()
+        bone_out.name = bone.name
+        name_to_bone[bone.name] = bone_out
+
+    for bone in skeleton.bones:
+        bone_out = name_to_bone[bone.name]
+
+        if bone.parent is None:
+            mat = coord_transform @ bone.matrix_local
+        else:
+            bone_out.parent = name_to_bone[bone.parent.name]
+            parent_mat = coord_transform @ bone.parent.matrix_local
+            mat = parent_mat.inverted() @ (coord_transform @ bone.matrix_local)
+
+        position, quaternion, scale = mat.decompose()
+
+        bone_out.transform.position = position.to_4d()
+        bone_out.transform.quaternion = (quaternion.x,quaternion.y,quaternion.z,quaternion.w)
+        bone_out.transform.scale = scale.to_4d()
+
+        skeleton_out.bones.append(bone_out)
+
+    return skeleton_out

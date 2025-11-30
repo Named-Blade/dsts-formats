@@ -327,9 +327,10 @@ def export_mesh_object(mesh_obj, skeleton = None, coord_transform = Matrix.Rotat
 
         mesh_out.set_tangent(vert_tangents.astype(np.float16))
 
+    # -- WEIGHTS --
     if skeleton is not None:
         mesh_out.matrix_palette = [b for b in skeleton.bones if b.name in mesh_obj.vertex_groups]
-        name_to_id = {b.name:i for i,b in enumerate(mesh.matrix_palette)}
+        name_to_id = {b.name:i for i,b in enumerate(mesh_out.matrix_palette)}
 
         groups_per_vertex = max([len(v.groups) for v in mesh.vertices])
 
