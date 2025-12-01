@@ -11,6 +11,7 @@ def import_geom(context, filepath):
     error_state_old = dsts_formats.get_throw_errors()
     error_list_old = dsts_formats.get_error_list()
     dsts_formats.set_throw_errors(False)
+    dsts_formats.set_error_list([])
 
     geom = dsts_formats.Geom.from_file(filepath)
 
@@ -44,10 +45,10 @@ def import_geom(context, filepath):
         )
 
     error_list = dsts_formats.get_error_list()
-    dsts_formats.set_error_list(error_list_old)
 
     if error_list:
         bpy.ops.wm.show_errors_window('INVOKE_DEFAULT', errors="\n\n".join(error_list))
 
     dsts_formats.set_throw_errors(error_state_old)
+    dsts_formats.set_error_list(error_list_old)
     return new_collection
