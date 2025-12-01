@@ -691,6 +691,34 @@ namespace dsts::geom
         }
     }
 
+    Atype parseAtype(const std::string &s) {
+        if (s == "position") return Atype::Position;
+        if (s == "normal")   return Atype::Normal;
+        if (s == "tangent")  return Atype::Tangent;
+        if (s == "binormal") return Atype::Binormal;
+        if (s == "uv1")      return Atype::UV1;
+        if (s == "uv2")      return Atype::UV2;
+        if (s == "uv3")      return Atype::UV3;
+        if (s == "unk_8")    return Atype::unk_8;
+        if (s == "color")    return Atype::Color;
+        if (s == "index")    return Atype::Index;
+        if (s == "weight")   return Atype::Weight;
+        return Atype{}; // or throw, or return default
+    }
+
+    Dtype parseDtype(const std::string &s) {
+        if (s == "uByte")   return Dtype::uByte;
+        if (s == "sByte")   return Dtype::sByte;
+        if (s == "uShort")  return Dtype::uShort;
+        if (s == "sShort")  return Dtype::sShort;
+        if (s == "uInt")    return Dtype::uInt;
+        if (s == "sInt")    return Dtype::sInt;
+        if (s == "float")   return Dtype::Float_alias;   // default choice if collisions matter
+        if (s == "float16") return Dtype::Float16_alias; // same as above
+
+        return Dtype{}; // or handle error
+    }
+
     std::vector<std::pair<std::shared_ptr<Bone>, const Mesh*>> getGeometry(const std::vector<Mesh>& meshes) {
         struct BonePtrHash {
             std::size_t operator()(const std::shared_ptr<Bone>& b) const noexcept {

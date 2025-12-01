@@ -514,7 +514,7 @@ namespace dsts::geom
 
                     meshHeader.vertices_offset = meshDataBase + meshDataSize;
                     meshHeader.vertex_count = vertexCopy.size();
-                    std::string verts = packVertices(mesh.meshAttributes, vertexCopy, attrData.totalSizeBytes);
+                    std::string verts = packVertices(mesh.meshAttributes, vertexCopy, mesh.bytes_per_vertex);
                     meshDataSize += verts.size();
                     vertices[i] = verts;
 

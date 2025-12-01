@@ -224,10 +224,11 @@ void bind_mesh(py::module_ &m) {
 
     // MeshAttribute binding
     py::class_<MeshAttribute>(m, "MeshAttribute")
-        .def_readonly("count", &MeshAttribute::count)
-        .def_readonly("offset", &MeshAttribute::offset)
-        .def_property_readonly("atype", [](const MeshAttribute &m){return getAtype(m);})
-        .def_property_readonly("dtype", [](const MeshAttribute &m){return getDtype(m);})
+        .def(py::init<>())
+        .def_readwrite("count", &MeshAttribute::count)
+        .def_readwrite("offset", &MeshAttribute::offset)
+        .def_property("atype", [](const MeshAttribute &m){return getAtype(m);}, [](MeshAttribute &m, std::string &s){m.atype = parseAtype(s);})
+        .def_property("dtype", [](const MeshAttribute &m){return getDtype(m);}, [](MeshAttribute &m, std::string &s){m.dtype = parseDtype(s);})
         .def("__repr__", [](const MeshAttribute &m){
             return "<MeshAttribute: "+ getAtype(m) +">";
         });
