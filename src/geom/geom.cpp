@@ -533,9 +533,9 @@ namespace dsts::geom
                     indices[i] = mesh.indices;
 
                     meshHeader.attributes_offset = meshDataBase + meshDataSize;
-                    meshHeader.attribute_count = attrData.attributes.size();
-                    meshDataSize += sizeof(binary::MeshAttribute) * attrData.attributes.size();
-                    attributes[i] = attrData.attributes;
+                    meshHeader.attribute_count = mesh.meshAttributes.size();
+                    meshDataSize += sizeof(binary::MeshAttribute) * mesh.meshAttributes.size();
+                    attributes[i] = mesh.meshAttributes;
 
                     std::vector<std::array<float, 3>> pos;
                     pos.reserve(vertexCopy.size());
