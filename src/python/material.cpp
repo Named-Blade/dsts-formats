@@ -115,6 +115,11 @@ void bind_material(py::module_ &m) {
     // Material
     py::class_<Material, std::shared_ptr<Material>>(m, "Material")
         .def(py::init<>())
+        .def_readwrite("unknown_0x314", &Material::unknown_0x314)
+        .def_readwrite("unknown_0x318", &Material::unknown_0x318)
+        .def_readwrite("unknown_0x31C", &Material::unknown_0x31C)
+        .def_readwrite("unknown_0x324", &Material::unknown_0x324)
+        .def_readwrite("unknown_0x326", &Material::unknown_0x326)
         .def_property(
             "name",
             [](const Material &m) { return m.name; },

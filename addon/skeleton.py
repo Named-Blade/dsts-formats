@@ -180,6 +180,8 @@ def export_skeleton(skeleton_obj, coord_transform = Matrix.Rotation(math.radians
         bone_out.transform.quaternion = (quaternion.x,quaternion.y,quaternion.z,quaternion.w)
         bone_out.transform.scale = scale.to_4d()
 
+        bone_out.is_geometry = bone["dsts_geometry"]
+
         skeleton_out.bones.append(bone_out)
 
     return skeleton_out
