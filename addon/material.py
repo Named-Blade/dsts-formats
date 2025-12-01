@@ -341,11 +341,11 @@ def resolve_material(collection, mat, mat_data, tex_folder):
     output = nodes.new("ShaderNodeOutputMaterial")
     output.location = (400, 0)
 
-    mat['unknown_0x314'] = mat_data.unknown_0x314
-    mat['unknown_0x318'] = mat_data.unknown_0x318
-    mat['unknown_0x31C'] = mat_data.unknown_0x31C
-    mat['unknown_0x324'] = mat_data.unknown_0x324
-    mat['unknown_0x326'] = mat_data.unknown_0x326
+    mat['DSTS_unknown_0x314'] = mat_data.unknown_0x314
+    mat['DSTS_unknown_0x318'] = mat_data.unknown_0x318
+    mat['DSTS_unknown_0x31C'] = mat_data.unknown_0x31C
+    mat['DSTS_unknown_0x324'] = mat_data.unknown_0x324
+    mat['DSTS_unknown_0x326'] = mat_data.unknown_0x326
 
     links.new(group_node.outputs["Shader"], output.inputs["Surface"])
 
@@ -369,10 +369,10 @@ def export_material(mat):
 
     mat_out.name = mat.name
 
-    mat_out.unknown_0x314 = mat['unknown_0x314']
-    mat_out.unknown_0x318 = mat['unknown_0x318']
-    mat_out.unknown_0x31C = mat['unknown_0x31C']
-    mat_out.unknown_0x324 = mat['unknown_0x324']
-    mat_out.unknown_0x326 = mat['unknown_0x326']
+    mat_out.unknown_0x314 = mat['DSTS_unknown_0x314']
+    mat_out.unknown_0x318 = mat['DSTS_unknown_0x318']
+    mat_out.unknown_0x31C = mat['DSTS_unknown_0x31C']
+    mat_out.unknown_0x324 = mat['DSTS_unknown_0x324']
+    mat_out.unknown_0x326 = mat['DSTS_unknown_0x326']
 
     return mat_out

@@ -144,9 +144,9 @@ def import_skeleton(skeleton, target_collection=None, coordinate_remap=None):
     # Add custom geometry flag to Bone data (in Pose Mode/Object Mode)
     for bone in skeleton.bones:
         blender_bone = armature_data.bones[bone.name]
-        blender_bone["dsts_geometry"] = bone.is_geometry
+        blender_bone["DSTS_geometry"] = bone.is_geometry
 
-        rna_prop = blender_bone.id_properties_ui("dsts_geometry")
+        rna_prop = blender_bone.id_properties_ui("DSTS_geometry")
         rna_prop.update(
             description="Marks this bone as geometry",
             default=bone.is_geometry
@@ -180,7 +180,7 @@ def export_skeleton(skeleton_obj, coord_transform = Matrix.Rotation(math.radians
         bone_out.transform.quaternion = (quaternion.x,quaternion.y,quaternion.z,quaternion.w)
         bone_out.transform.scale = scale.to_4d()
 
-        bone_out.is_geometry = bone["dsts_geometry"]
+        bone_out.is_geometry = bone["DSTS_geometry"]
 
         skeleton_out.bones.append(bone_out)
 
