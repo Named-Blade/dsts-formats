@@ -23,6 +23,7 @@ void bind_material(py::module_ &m) {
     //Uniform
     py::class_<dsts::geom::ShaderUniform>(m, "ShaderUniform")
         .def(py::init<>())
+        .def_readwrite("unknown_0xC", &dsts::geom::ShaderUniform::unknown_0xC)
         .def_property("parameter_id",
             &dsts::geom::ShaderUniform::getParameterId,
             &dsts::geom::ShaderUniform::setParameterId)

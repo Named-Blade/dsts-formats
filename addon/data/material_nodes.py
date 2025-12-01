@@ -58,6 +58,22 @@ class NODE_MT_dsts_menu(Menu):
 def add_dsts_submenu(self, context):
     self.layout.menu(NODE_MT_dsts_menu.bl_idname)
 
+class NODE_PT_custom_image_props(bpy.types.Panel):
+    bl_space_type = 'NODE_EDITOR'
+    bl_region_type = 'UI'
+    bl_category = 'DSTS Node Data'
+    bl_label = "Custom Node Data"
+
+    @classmethod
+    def poll(cls, context):
+        node = context.active_node
+        return node and "unknown_0xC" in node
+
+    def draw(self, context):
+        layout = self.layout
+        node = context.active_node
+        layout.prop(node, '["unknown_0xC"]', text="unknown_0xC")   # <- shows in UI
+        layout.label(text=f"Uniform: {node.label[5:]}")
 
 # -------------------------
 #   Register
@@ -66,6 +82,7 @@ classes = (
     ShaderString,
     ShaderDataNode,
     NODE_MT_dsts_menu,
+    NODE_PT_custom_image_props
 )
 
 def register():

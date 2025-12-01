@@ -2,6 +2,8 @@ import bpy
 import os
 import re
 
+from pathlib import Path
+
 from . import dsts_formats
 
 def layout_columns(node_groups, column_map, x_step=300, y_step=-220):
@@ -76,14 +78,26 @@ def get_collection_eye_offset_group(collection):
 
     return group
 
-def get_image(tex_path):
+def get_image(tex_path, fallback_size=(1024, 1024)):
     tex_path = bpy.path.abspath(tex_path)
 
+    # Check if any existing image matches this path (even if missing on disk)
     for img in bpy.data.images:
         if bpy.path.abspath(img.filepath) == tex_path:
             return img
 
-    return bpy.data.images.load(tex_path)
+    # If path exists -> load the file
+    if os.path.exists(tex_path):
+        return bpy.data.images.load(tex_path)
+
+    # Otherwise create ONE shared placeholder for this path
+    name = os.path.basename(tex_path) or tex_path  # stable identifier
+    img = bpy.data.images.new(name=name, width=fallback_size[0], height=fallback_size[1])
+
+    # Store the intended filepath so future requests will match this same image
+    img.filepath = tex_path
+
+    return img
 
 def resolve_material(collection, mat, mat_data, tex_folder):
 
@@ -199,11 +213,9 @@ def resolve_material(collection, mat, mat_data, tex_folder):
             continue
 
         tex_path = os.path.join(tex_folder, uniform.value + ".img")
-        if not os.path.exists(tex_path):
-            print(f"Warning: texture not found: {tex_path}")
-            continue
 
         tex_node = g_nodes.new("ShaderNodeTexImage")
+        tex_node["unknown_0xC"] = uniform.unknown_0xC
         tex_node.image = get_image(tex_path)
         tex_node.label = "DSTS-" + uniform.parameter_name
 
@@ -332,6 +344,21 @@ def resolve_material(collection, mat, mat_data, tex_folder):
 
 def export_material(mat):
     mat_out = dsts_formats.Material()
+
+    g_node = next(n for n in mat.node_tree.nodes if n.type == "GROUP" and n.node_tree.name == f"DSTS_Data-{mat.name}")
+    g_tree = g_node.node_tree
+
+    for node in g_tree.nodes:
+        if type(node) == dsts_formats.data.material_nodes.ShaderDataNode:
+            for i in range(14):
+                mat_out.shaders[i].name = node.shader_strings[i].value
+        elif type(node) == bpy.types.ShaderNodeTexImage and node.label.startswith("DSTS-"):
+            uniform = dsts_formats.ShaderUniform()
+            uniform.parameter_name = node.label[5:]
+            uniform.value = Path(node.image.name).stem
+            uniform.unknown_0xC = node['unknown_0xC']
+
+            mat_out.append(uniform)
 
     mat_out.name = mat.name
 
