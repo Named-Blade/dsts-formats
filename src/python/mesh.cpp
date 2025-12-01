@@ -322,6 +322,8 @@ void bind_mesh(py::module_ &m) {
                 m.vertices[i].weight.setFromPtr<float16>((const char *)dataPtr, groupCount);
             }
         })
+        .def_readwrite("mesh_attributes", &Mesh::meshAttributes)
+        .def_readwrite("bytes_per_vertex", &Mesh::bytes_per_vertex)
         .def_property("name", 
             [](const Mesh &m) { return m.name; }, 
             &Mesh::setName)

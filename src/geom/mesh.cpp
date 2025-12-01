@@ -126,6 +126,9 @@ namespace dsts::geom
             std::vector<uint16_t> indices;
             PrimitiveType primitive;
 
+            std::vector<MeshAttribute> meshAttributes;
+            uint16_t bytes_per_vertex{};
+
             std::vector<std::shared_ptr<Bone>> matrix_palette;
 
             std::shared_ptr<Material> material;

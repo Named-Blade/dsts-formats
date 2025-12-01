@@ -153,16 +153,18 @@ namespace dsts::geom
                         })());
                     }
 
-                    std::vector<binary::MeshAttribute> meshAttributes(meshHeaders[i].attribute_count);
+                    mesh.meshAttributes.resize(meshHeaders[i].attribute_count);
                     f.seekg(base + meshHeaders[i].attributes_offset);
-                    f.read(reinterpret_cast<char*>(meshAttributes.data()), sizeof(binary::MeshAttribute) * meshHeaders[i].attribute_count);
+                    f.read(reinterpret_cast<char*>(mesh.meshAttributes.data()), sizeof(binary::MeshAttribute) * meshHeaders[i].attribute_count);
+
+                    mesh.bytes_per_vertex = meshHeaders[i].bytes_per_vertex;
 
                     size_t totalBytes =  meshHeaders[i].bytes_per_vertex *  meshHeaders[i].vertex_count;
                     auto allVertices = std::make_unique<char[]>(totalBytes);
                     f.seekg(base + meshHeaders[i].vertices_offset);
                     f.read((char*)allVertices.get(), totalBytes);
 
-                    unpackVertices(mesh.vertices, meshAttributes, allVertices.get(), totalBytes,  meshHeaders[i].bytes_per_vertex);
+                    unpackVertices(mesh.vertices, mesh.meshAttributes, allVertices.get(), totalBytes,  meshHeaders[i].bytes_per_vertex);
 
                     if (meshHeaders[i].vertex_groups_per_vertex == 0) {
                         for (auto &v : mesh.vertices) {
@@ -508,11 +510,11 @@ namespace dsts::geom
                         }
                     }
 
-                    meshHeader.bytes_per_vertex = attrData.totalSizeBytes;
+                    meshHeader.bytes_per_vertex = mesh.bytes_per_vertex;
 
                     meshHeader.vertices_offset = meshDataBase + meshDataSize;
                     meshHeader.vertex_count = vertexCopy.size();
-                    std::string verts = packVertices(attrData.attributes, vertexCopy, attrData.totalSizeBytes);
+                    std::string verts = packVertices(mesh.meshAttributes, vertexCopy, attrData.totalSizeBytes);
                     meshDataSize += verts.size();
                     vertices[i] = verts;
 
