@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 from . import dsts_formats
+from . import data
 
 def layout_columns(node_groups, column_map, x_step=300, y_step=-220):
     """
@@ -349,7 +350,7 @@ def export_material(mat):
     g_tree = g_node.node_tree
 
     for node in g_tree.nodes:
-        if type(node) == dsts_formats.data.material_nodes.ShaderDataNode:
+        if type(node) == data.material_nodes.ShaderDataNode:
             for i in range(14):
                 mat_out.shaders[i].name = node.shader_strings[i].value
         elif type(node) == bpy.types.ShaderNodeTexImage and node.label.startswith("DSTS-"):
@@ -358,7 +359,7 @@ def export_material(mat):
             uniform.value = Path(node.image.name).stem
             uniform.unknown_0xC = node['unknown_0xC']
 
-            mat_out.append(uniform)
+            mat_out.uniforms.append(uniform)
 
     mat_out.name = mat.name
 

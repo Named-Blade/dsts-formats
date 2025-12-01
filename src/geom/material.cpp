@@ -27,9 +27,9 @@ namespace dsts::geom
 
             //unks
             uint32_t unknown_0xC;
-            uint32_t unknown_0x14;
-            uint32_t unknown_0x18;
-            uint32_t unknown_0x1C;
+            uint32_t unknown_0x14 = 0xFFFFFFFF;
+            uint32_t unknown_0x18 = 0xFFFFFFFF;
+            uint32_t unknown_0x1C = 0xFFFFFF;
 
             ShaderUniform() = default;
 
