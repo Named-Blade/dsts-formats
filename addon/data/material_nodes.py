@@ -5,6 +5,15 @@ from bpy.types import Node, PropertyGroup, Menu
 class ShaderString(PropertyGroup):
     value: bpy.props.StringProperty(name="DSTS Shader String", default="")
 
+class MeshAttributeProperty(bpy.types.PropertyGroup):
+    atype: bpy.props.StringProperty(name="Attribute Type")
+    dtype: bpy.props.StringProperty(name="Data Type")
+    count: bpy.props.IntProperty(name="Count", default=1)
+    offset: bpy.props.IntProperty(name="Offset", default=0)
+
+    def __repr__(self):
+        return f"<MeshAttribute: {self.atype}>"
+
 # --- Custom Node ---
 class ShaderDataNode(Node):
     bl_idname = "DSTS_ShaderData"
@@ -16,8 +25,19 @@ class ShaderDataNode(Node):
     string_count: bpy.props.IntProperty(
         name="Count",
         default=14,
-        update=lambda self, context: self.resize_strings()
+        update=lambda self, context: self.resize()
     )
+
+    bytes_per_vertex: bpy.props.IntProperty(
+        name="Bytes"
+    )
+
+    attributes: bpy.props.CollectionProperty(
+        type=MeshAttributeProperty,
+        name="Mesh Attributes"
+    )
+
+    active_attribute: bpy.props.IntProperty(name="Active Attribute", default=0)
     
     def resize_strings(self):
         while len(self.shader_strings) < self.string_count:
@@ -32,6 +52,17 @@ class ShaderDataNode(Node):
     def draw_buttons(self, context, layout):
         for i, s in enumerate(self.shader_strings):
             layout.prop(s, "value", text=f"Shader {i+1}")
+
+        layout.prop(self, "bytes_per_vertex")
+        
+        for i, attr in enumerate(self.attributes):
+            box = layout.box()
+            box.label(text=f"Attribute {i}")
+
+            box.prop(attr, "atype")
+            box.prop(attr, "dtype")
+            box.prop(attr, "count")
+            box.prop(attr, "offset")
     
     def get_shader_strings(self):
         return [s.value for s in self.shader_strings]
@@ -80,6 +111,7 @@ class NODE_PT_custom_image_props(bpy.types.Panel):
 # -------------------------
 classes = (
     ShaderString,
+    MeshAttributeProperty,
     ShaderDataNode,
     NODE_MT_dsts_menu,
     NODE_PT_custom_image_props

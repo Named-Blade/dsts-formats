@@ -5,6 +5,7 @@ from . import mesh
 from . import material
 from . import utils
 from . import dsts_formats
+from . import data
 from pathlib import Path
 
 def import_geom(context, filepath):
@@ -43,6 +44,20 @@ def import_geom(context, filepath):
             blender_materials, 
             new_collection
         )
+        #handle material vertex buffer layout
+        mat = blender_materials[mesh_obj.material.name]
+        attr_list = [
+            {"count": attr.count, "offset": attr.offset, "atype": attr.atype, "dtype": attr.dtype}
+            for attr in mesh_obj.mesh_attributes
+        ]
+        g_node = next(n for n in mat.node_tree.nodes if n.type == "GROUP" and n.node_tree.name == f"DSTS_Data-{mat.name}")
+        data_node = next(n for n in g_node.node_tree.nodes if type(n) == data.material_nodes.ShaderDataNode)
+        if len(data_node.attributes) == 0:
+            data_node.bytes_per_vertex = mesh_obj.bytes_per_vertex
+            for attr in attr_list:
+                at = data_node.attributes.add()
+                at.count, at.offset, at.atype, at.dtype = attr.values()
+
 
     error_list = dsts_formats.get_error_list()
 

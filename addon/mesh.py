@@ -4,6 +4,7 @@ from mathutils import Matrix, Vector
 import math
 import json
 from . import dsts_formats
+from . import data
 
 # ----------------------------------------------------------
 # Optimization Helpers
@@ -224,15 +225,6 @@ def import_mesh_object(bl_mesh: dsts_formats.Mesh, armature_obj, materials_dict,
         mod = obj.modifiers.new(name="Armature", type='ARMATURE')
         mod.object = armature_obj
 
-    # --- ATTRIBUTES --
-    attr_list = [
-        {"count": attr.count, "offset": attr.offset, "atype": attr.atype, "dtype": attr.dtype}
-        for attr in bl_mesh.mesh_attributes
-    ]
-
-    obj.data["DSTS_mesh_attributes"] = json.dumps(attr_list)
-    obj.data["DSTS_vertex_bytes"] = bl_mesh.bytes_per_vertex
-
     return obj
 
 def export_mesh_object(mesh_obj, skeleton = None, coord_transform = Matrix.Rotation(math.radians(-90), 4, 'X')):
@@ -361,16 +353,20 @@ def export_mesh_object(mesh_obj, skeleton = None, coord_transform = Matrix.Rotat
         mesh_out.set_index(vert_indices)
         mesh_out.set_weight(vert_weights.astype(np.float16))
 
-    # -- ATTRIBUTES --
-    attrs = json.loads(mesh["DSTS_mesh_attributes"])
-    new_attrs = []
-    for attr in attrs:
-        a = dsts_formats.MeshAttribute()
-        a.count, a.offset, a.atype, a.dtype = attr.values()
-        new_attrs.append(a)
+    mat = mesh.materials[0]
+    g_node = next(n for n in mat.node_tree.nodes if n.type == "GROUP" and n.node_tree.name == f"DSTS_Data-{mat.name}")
+    data_node = next(n for n in g_node.node_tree.nodes if type(n) == data.material_nodes.ShaderDataNode)
+    attrs = []
+    for at in data_node.attributes:
+        attribute = dsts_formats.MeshAttribute()
+        attribute.count = at.count
+        attribute.offset = at.offset
+        attribute.atype = at.atype
+        attribute.dtype = at.dtype
+        attrs.append(attribute)
 
-    mesh_out.mesh_attributes = new_attrs
-    mesh_out.bytes_per_vertex = mesh["DSTS_vertex_bytes"]
+    mesh_out.mesh_attributes = attrs
+    mesh_out.bytes_per_vertex = data_node.bytes_per_vertex
 
     mesh_out.name = mesh.name
 
