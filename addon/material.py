@@ -292,12 +292,26 @@ def resolve_material(collection, mat, mat_data, tex_folder):
         attr_node.attribute_name = "Color"
         g_links.new(attr_node.outputs["Color"], principled.inputs["Base Color"])
 
+    for setting in mat_data.settings:
+            setting_node = g_nodes.new(type="DSTS_ShaderSetting")
+
+            setting_node.label = "DSTS-" + setting.parameter_name
+            base_width = 30
+            char_width = 8
+            setting_node.width = base_width + len(setting_node.label) * char_width
+
+            setting_node["unknown_0x12"] = setting.unknown_0x12
+
+            for value in list(bytes(setting.value)):
+                val = setting_node.values.add()
+                val.value = value
+
     # ------------------------------------------------------------
     # Organize nodes into columns
     # ------------------------------------------------------------
     columns = {
         "shader_data": [],
-        "input": [],
+        "shader_data_2": [],
         "textures": [],
         "utility": [],
         "shader": [],
@@ -309,8 +323,8 @@ def resolve_material(collection, mat, mat_data, tex_folder):
         if isinstance(n, (data.material_nodes.ShaderDataNode,
                           data.material_nodes.ShaderFloatUniform)):
             columns["shader_data"].append(n)
-        if isinstance(n, bpy.types.NodeGroupInput):
-            columns["input"].append(n)
+        elif isinstance(n, data.material_nodes.ShaderSetting):
+            columns["shader_data_2"].append(n)
         elif isinstance(n, bpy.types.NodeGroupOutput):
             columns["output"].append(n)
         elif isinstance(n, bpy.types.ShaderNodeTexImage):
@@ -333,7 +347,7 @@ def resolve_material(collection, mat, mat_data, tex_folder):
     # Define X-column indices
     column_map = {
         "shader_data": -1,
-        "input": 0,
+        "shader_data_2": 0,
         "textures": 1,
         "utility": 2,
         "shader": 3,
@@ -389,6 +403,13 @@ def export_material(mat):
             uniform.value = [v.value for v in node.values]
 
             mat_out.uniforms.append(uniform)
+        elif type(node) == data.material_nodes.ShaderSetting and node.label.startswith("DSTS-"):
+            setting = dsts_formats.ShaderSetting()
+            setting.parameter_name = node.label[5:]
+            setting.value = bytes([v.value for v in node.values])
+            setting.unknown_0x12 = node["unknown_0x12"]
+
+            mat_out.settings.append(setting)
 
     mat_out.name = mat.name
 

@@ -8,6 +8,9 @@ class ShaderString(PropertyGroup):
 class FloatItem(bpy.types.PropertyGroup):
     value: bpy.props.FloatProperty()
 
+class IntItem(bpy.types.PropertyGroup):
+    value: bpy.props.IntProperty()
+
 class MeshAttributeProperty(bpy.types.PropertyGroup):
     atype: bpy.props.StringProperty(name="Attribute Type")
     dtype: bpy.props.StringProperty(name="Data Type")
@@ -16,6 +19,26 @@ class MeshAttributeProperty(bpy.types.PropertyGroup):
 
     def __repr__(self):
         return f"<MeshAttribute: {self.atype}>"
+    
+class ShaderSetting(Node):
+    bl_idname = "DSTS_ShaderSetting"
+    bl_label = "DSTS Shader Setting"
+    bl_icon = 'NODE'
+
+    values: bpy.props.CollectionProperty(type=IntItem)
+
+    def draw_buttons(self, context, layout):
+        for i in range(0, len(self.values), 4):
+            row = layout.row(align=True)
+
+            row.prop(self.values[i], "value", text="")
+
+            if i + 1 < len(self.values):
+                row.prop(self.values[i+1], "value", text=f"")
+            if i + 2 < len(self.values):
+                row.prop(self.values[i+2], "value", text=f"")
+            if i + 3 < len(self.values):
+                row.prop(self.values[i+3], "value", text=f"")
     
 class ShaderFloatUniform(Node):
     bl_idname = "DSTS_ShaderFloatUniform"
@@ -129,9 +152,11 @@ class NODE_PT_custom_image_props(bpy.types.Panel):
 classes = (
     ShaderString,
     FloatItem,
+    IntItem,
     MeshAttributeProperty,
     ShaderDataNode,
     ShaderFloatUniform,
+    ShaderSetting,
     NODE_MT_dsts_menu,
     NODE_PT_custom_image_props
 )
