@@ -19,6 +19,29 @@ void bind_geom(py::module_ &m) {
         .def_readwrite("unknown_0x10", &Geom::unknown_0x10)
         .def_readwrite("unknown_0x30", &Geom::unknown_0x30)
         .def_readwrite("unknown_0x34", &Geom::unknown_0x34)
+        .def_property("clut", [](const Geom &g){
+            constexpr size_t n = sizeof(g.clut);
+            return py::memoryview::from_buffer(
+                reinterpret_cast<uint8_t const*>(&g.clut),
+                { n },
+                { sizeof(uint8_t) }
+            );
+        },[](Geom &g, py::bytes b){
+            constexpr size_t n = sizeof(g.clut);
+
+            py::buffer_info info(py::buffer(b).request());
+            size_t input_size = info.size; 
+            const uint8_t* src = static_cast<const uint8_t*>(info.ptr);
+            uint8_t* value = reinterpret_cast<uint8_t*>(&g.clut);
+
+            if (input_size >= n) {
+                memcpy(value, src, n);
+            } else {
+                memcpy(value, src, input_size);
+                memset(value + input_size, 0, n - input_size);
+            }
+
+        })
         .def_readwrite("skeleton", &Geom::skeleton)
         .def_property(
             "meshes",

@@ -1,6 +1,7 @@
 import bpy
 import os
 import re
+import base64
 from . import skeleton
 from . import mesh
 from . import material
@@ -24,6 +25,8 @@ def import_geom(context, filepath):
     new_collection["unknown_0x10"] = geom.unknown_0x10
     new_collection["unknown_0x30"] = geom.unknown_0x30
     new_collection["unknown_0x34"] = geom.unknown_0x34
+
+    new_collection["CLUT"] = base64.b64encode(bytes(geom.clut)).decode("ascii")
 
     # Import Skeleton
     armature_obj = skeleton.import_skeleton(geom.skeleton, new_collection, utils.unflop)
@@ -79,6 +82,8 @@ def export_geom(collection):
     geom.unknown_0x10 = collection["unknown_0x10"]
     geom.unknown_0x30 = collection["unknown_0x30"]
     geom.unknown_0x34 = collection["unknown_0x34"]
+
+    geom.clut = base64.b64decode(bytes(collection["CLUT"], "ascii"))
 
     armatures = [o for o in collection.objects if o.type == "ARMATURE"]
     if not armatures:
