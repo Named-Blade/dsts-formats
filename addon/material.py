@@ -284,6 +284,7 @@ def resolve_material(collection, mat, mat_data, tex_folder):
     # Organize nodes into columns
     # ------------------------------------------------------------
     columns = {
+        "shader_data": [],
         "input": [],
         "textures": [],
         "utility": [],
@@ -293,6 +294,8 @@ def resolve_material(collection, mat, mat_data, tex_folder):
 
     # Categorize nodes
     for n in g_nodes:
+        if isinstance(n, data.material_nodes.ShaderDataNode):
+            columns["shader_data"].append(n)
         if isinstance(n, bpy.types.NodeGroupInput):
             columns["input"].append(n)
         elif isinstance(n, bpy.types.NodeGroupOutput):
@@ -316,6 +319,7 @@ def resolve_material(collection, mat, mat_data, tex_folder):
 
     # Define X-column indices
     column_map = {
+        "shader_data": -1,
         "input": 0,
         "textures": 1,
         "utility": 2,
@@ -352,7 +356,7 @@ def resolve_material(collection, mat, mat_data, tex_folder):
 def export_material(mat):
     mat_out = dsts_formats.Material()
 
-    g_node = next(n for n in mat.node_tree.nodes if n.type == "GROUP" and n.node_tree.name == f"DSTS_Data-{mat.name}")
+    g_node = next(n for n in mat.node_tree.nodes if n.type == "GROUP" and n.node_tree.name.startswith(f"DSTS_Data-{mat.name}") )
     g_tree = g_node.node_tree
 
     for node in g_tree.nodes:

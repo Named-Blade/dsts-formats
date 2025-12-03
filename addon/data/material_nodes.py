@@ -53,12 +53,11 @@ class ShaderDataNode(Node):
         for i, s in enumerate(self.shader_strings):
             layout.prop(s, "value", text=f"Shader {i+1}")
 
+        layout.label(text="Vertex Buffer Layout")
         layout.prop(self, "bytes_per_vertex")
         
         for i, attr in enumerate(self.attributes):
             box = layout.box()
-            box.label(text=f"Attribute {i}")
-
             box.prop(attr, "atype")
             box.prop(attr, "dtype")
             box.prop(attr, "count")

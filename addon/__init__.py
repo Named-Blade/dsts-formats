@@ -39,7 +39,7 @@ class MY_OT_dsts_geom_export_operator(Operator, ExportHelper):
     bl_label = "DSTS .geom export"
 
     def collection_items(self, context):
-        return [(col.name, col.name, "") for col in bpy.data.collections]
+        return [(col.name, col.name, "") for col in bpy.data.collections if "unknown_0x10" in col]
     
     collection_name: EnumProperty(
         name="Collection",
@@ -66,6 +66,10 @@ class MY_OT_dsts_geom_export_operator(Operator, ExportHelper):
         if not collection:
             self.report({'ERROR'}, f"Collection '{self.collection_name}' not found")
             return {'CANCELLED'}
+        
+        g.unknown_0x10 = collection["unknown_0x10"]
+        g.unknown_0x30 = collection["unknown_0x30"]
+        g.unknown_0x34 = collection["unknown_0x34"]
 
         armatures = [o for o in collection.objects if o.type == "ARMATURE"]
         if not armatures:

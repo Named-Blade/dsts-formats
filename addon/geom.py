@@ -20,6 +20,10 @@ def import_geom(context, filepath):
     new_collection = bpy.data.collections.new(name="Geom")
     context.scene.collection.children.link(new_collection)
 
+    new_collection["unknown_0x10"] = geom.unknown_0x10
+    new_collection["unknown_0x30"] = geom.unknown_0x30
+    new_collection["unknown_0x34"] = geom.unknown_0x34
+
     # Import Skeleton
     armature_obj = skeleton.import_skeleton(geom.skeleton, new_collection, utils.unflop)
 
@@ -50,7 +54,7 @@ def import_geom(context, filepath):
             {"count": attr.count, "offset": attr.offset, "atype": attr.atype, "dtype": attr.dtype}
             for attr in mesh_obj.mesh_attributes
         ]
-        g_node = next(n for n in mat.node_tree.nodes if n.type == "GROUP" and n.node_tree.name == f"DSTS_Data-{mat.name}")
+        g_node = next(n for n in mat.node_tree.nodes if n.type == "GROUP" and n.node_tree.name.startswith(f"DSTS_Data-{mat.name}") )
         data_node = next(n for n in g_node.node_tree.nodes if type(n) == data.material_nodes.ShaderDataNode)
         if len(data_node.attributes) == 0:
             data_node.bytes_per_vertex = mesh_obj.bytes_per_vertex

@@ -16,6 +16,9 @@ void bind_geom(py::module_ &m) {
 
     py::class_<Geom>(m, "Geom")
         .def(py::init<>())
+        .def_readwrite("unknown_0x10", &Geom::unknown_0x10)
+        .def_readwrite("unknown_0x30", &Geom::unknown_0x30)
+        .def_readwrite("unknown_0x34", &Geom::unknown_0x34)
         .def_readwrite("skeleton", &Geom::skeleton)
         .def_property(
             "meshes",
