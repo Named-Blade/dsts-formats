@@ -71,3 +71,32 @@ def import_geom(context, filepath):
     dsts_formats.set_throw_errors(error_state_old)
     dsts_formats.set_error_list(error_list_old)
     return new_collection
+
+def export_geom(collection):
+    geom = dsts_formats.Geom()
+
+    geom.unknown_0x10 = collection["unknown_0x10"]
+    geom.unknown_0x30 = collection["unknown_0x30"]
+    geom.unknown_0x34 = collection["unknown_0x34"]
+
+    armatures = [o for o in collection.objects if o.type == "ARMATURE"]
+    if not armatures:
+        self.report({'ERROR'}, "No armature found in collection")
+        return {'CANCELLED'}
+
+    geom.skeleton = skeleton.export_skeleton(armatures[0])
+
+    name_to_mat = {}
+    for mat in {o.data.materials[0] for o in collection.objects if o.type == "MESH"}:
+        mat_data = material.export_material(mat)
+        geom.materials.append(mat_data)
+        name_to_mat[mat_data.name] = mat_data
+
+    for obj in [o for o in collection.objects if o.type == "MESH"]:
+        mesh_out = mesh.export_mesh_object(obj, geom.skeleton)
+        mat_name = obj.data.materials[0].name
+        mesh_out.material = name_to_mat[mat_name]
+        geom.meshes.append(mesh_out)
+
+    for obj in [*geom.skeleton.bones] + [*geom.materials] + [*geom.meshes]:
+        obj.name = re.sub("(\.[0-9]{3})?$", "", obj.name)

@@ -5,7 +5,7 @@ from bpy_extras.io_utils import ImportHelper, ExportHelper
 from bpy.props import StringProperty, EnumProperty
 from bpy.types import Operator
 
-from .geom import import_geom
+from .geom import import_geom, export_geom
 from .nlst import write_nlst
 from .data import material_nodes
 
@@ -53,50 +53,18 @@ class MY_OT_dsts_geom_export_operator(Operator, ExportHelper):
         options={'HIDDEN'}
     )
 
-    def execute(self, context):
-        from . import dsts_formats as f
-        from .skeleton import export_skeleton
-        from .material import export_material
-        from .mesh import export_mesh_object
-        
-
-        g = f.Geom()
-
+    def execute(self, context): 
         collection = bpy.data.collections.get(self.collection_name)
         if not collection:
             self.report({'ERROR'}, f"Collection '{self.collection_name}' not found")
             return {'CANCELLED'}
         
-        g.unknown_0x10 = collection["unknown_0x10"]
-        g.unknown_0x30 = collection["unknown_0x30"]
-        g.unknown_0x34 = collection["unknown_0x34"]
+        geom = export_geom(collection)
 
-        armatures = [o for o in collection.objects if o.type == "ARMATURE"]
-        if not armatures:
-            self.report({'ERROR'}, "No armature found in collection")
-            return {'CANCELLED'}
-        
-        g.skeleton = export_skeleton(armatures[0])
-
-        name_to_mat = {}
-        for mat in {o.data.materials[0] for o in collection.objects if o.type == "MESH"}:
-            mat_data = export_material(mat)
-            g.materials.append(mat_data)
-            name_to_mat[mat_data.name] = mat_data
-
-        for obj in [o for o in collection.objects if o.type == "MESH"]:
-            mesh = export_mesh_object(obj, g.skeleton)
-            mat_name = obj.data.materials[0].name
-            mesh.material = name_to_mat[mat_name]
-            g.meshes.append(mesh)
-
-        for obj in [*g.skeleton.bones] + [*g.materials] + [*g.meshes]:
-            obj.name = re.sub("(\.[0-9]{3})?$", "", obj.name)
-
-        g.to_file(self.filepath)
+        geom.to_file(self.filepath)
 
         with open(os.path.splitext(self.filepath)[0]+".nlst", "wb") as f:
-            f.write(write_nlst(g).encode("utf-8"))
+            f.write(write_nlst(geom).encode("utf-8"))
 
         return {'FINISHED'}
     
