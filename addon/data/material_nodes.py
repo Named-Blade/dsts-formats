@@ -5,6 +5,9 @@ from bpy.types import Node, PropertyGroup, Menu
 class ShaderString(PropertyGroup):
     value: bpy.props.StringProperty(name="DSTS Shader String", default="")
 
+class FloatItem(bpy.types.PropertyGroup):
+    value: bpy.props.FloatProperty()
+
 class MeshAttributeProperty(bpy.types.PropertyGroup):
     atype: bpy.props.StringProperty(name="Attribute Type")
     dtype: bpy.props.StringProperty(name="Data Type")
@@ -13,6 +16,17 @@ class MeshAttributeProperty(bpy.types.PropertyGroup):
 
     def __repr__(self):
         return f"<MeshAttribute: {self.atype}>"
+    
+class ShaderFloatUniform(Node):
+    bl_idname = "DSTS_ShaderFloatUniform"
+    bl_label = "DSTS Shader Float Uniform"
+    bl_icon = 'NODE'
+
+    values: bpy.props.CollectionProperty(type=FloatItem)
+
+    def draw_buttons(self, context, layout):
+        for i, s in enumerate(self.values):
+            layout.prop(s, "value", text=f"Float {i+1}")
 
 # --- Custom Node ---
 class ShaderDataNode(Node):
@@ -25,7 +39,7 @@ class ShaderDataNode(Node):
     string_count: bpy.props.IntProperty(
         name="Count",
         default=14,
-        update=lambda self, context: self.resize()
+        update=lambda self, context: self.resize_strings()
     )
 
     bytes_per_vertex: bpy.props.IntProperty(
@@ -97,21 +111,27 @@ class NODE_PT_custom_image_props(bpy.types.Panel):
     @classmethod
     def poll(cls, context):
         node = context.active_node
-        return node and "unknown_0xC" in node
+        return node and ("unknown_0xC" in node or "unknown_0x12" in node)
 
     def draw(self, context):
         layout = self.layout
         node = context.active_node
-        layout.prop(node, '["unknown_0xC"]', text="unknown_0xC")   # <- shows in UI
-        layout.label(text=f"Uniform: {node.label[5:]}")
+        if "unknown_0xC" in node:
+            layout.prop(node, '["unknown_0xC"]', text="unknown_0xC")
+            layout.label(text=f"Uniform: {node.label[5:]}")
+        elif "unknown_0x12" in node:
+            layout.prop(node, '["unknown_0x12"]', text="unknown_0x12")
+            layout.label(text=f"Setting: {node.label[5:]}")
 
 # -------------------------
 #   Register
 # -------------------------
 classes = (
     ShaderString,
+    FloatItem,
     MeshAttributeProperty,
     ShaderDataNode,
+    ShaderFloatUniform,
     NODE_MT_dsts_menu,
     NODE_PT_custom_image_props
 )

@@ -76,9 +76,9 @@ namespace dsts::geom
             //unks
             binary::Payload payload;
             uint16_t unknown_0x12;
-            uint32_t unknown_0x14;
-            uint32_t unknown_0x18;
-            uint32_t unknown_0x1C;
+            uint32_t unknown_0x14 = 0xFFFFFFFF;
+            uint32_t unknown_0x18 = 0xFFFFFFFF;
+            uint32_t unknown_0x1C = 0xFFFFFF;
 
             ShaderSetting() = default;
 

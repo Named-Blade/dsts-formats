@@ -1,5 +1,6 @@
 import bpy
 import os
+import re
 from . import skeleton
 from . import mesh
 from . import material
@@ -100,3 +101,5 @@ def export_geom(collection):
 
     for obj in [*geom.skeleton.bones] + [*geom.materials] + [*geom.meshes]:
         obj.name = re.sub("(\.[0-9]{3})?$", "", obj.name)
+
+    return geom

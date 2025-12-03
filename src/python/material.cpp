@@ -78,6 +78,7 @@ void bind_material(py::module_ &m) {
     //Setting
     py::class_<dsts::geom::ShaderSetting>(m, "ShaderSetting")
         .def(py::init<>())
+        .def_readwrite("unknown_0x12", &dsts::geom::ShaderSetting::unknown_0x12)
         .def_property("parameter_id",
             &dsts::geom::ShaderSetting::getParameterId,
             &dsts::geom::ShaderSetting::setParameterId)
