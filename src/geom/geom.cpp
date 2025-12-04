@@ -442,7 +442,7 @@ namespace dsts::geom
                 std::vector<std::vector<uint16_t>> indices(meshes.size());
                 std::vector<std::vector<binary::MeshAttribute>> attributes(meshes.size());
                 size_t meshesBase = nameTable.material_name_offsets_offset + sizeof(uint64_t) * nameTable.material_name_count;
-                size_t meshDataBase = meshesBase + sizeof(binary::MeshHeader) * meshes.size();
+                size_t meshDataBase = align( meshesBase + sizeof(binary::MeshHeader) * meshes.size(), 0x8 );
                 size_t meshDataSize{};
                 header.mesh_offset = meshesBase;
 
@@ -516,6 +516,7 @@ namespace dsts::geom
                     meshHeader.vertex_count = vertexCopy.size();
                     std::string verts = packVertices(mesh.meshAttributes, vertexCopy, mesh.bytes_per_vertex);
                     meshDataSize += verts.size();
+                    meshDataSize = align(meshDataSize, 0x8);
                     vertices[i] = verts;
 
                     meshHeader.matrix_palette_offset = meshDataBase + meshDataSize;
@@ -525,16 +526,19 @@ namespace dsts::geom
                         palette[y] = getIndex(skeleton.bones, mesh.matrix_palette[y]);
                     }
                     meshDataSize += sizeof(uint32_t) * palette.size();
+                    meshDataSize = align(meshDataSize, 0x8);
                     matrixPalettes[i] = palette;
 
                     meshHeader.indices_offset = meshDataBase + meshDataSize;
                     meshHeader.index_count = mesh.indices.size();
                     meshDataSize += sizeof(uint16_t) * mesh.indices.size();
+                    meshDataSize = align(meshDataSize, 0x8);
                     indices[i] = mesh.indices;
 
                     meshHeader.attributes_offset = meshDataBase + meshDataSize;
                     meshHeader.attribute_count = mesh.meshAttributes.size();
                     meshDataSize += sizeof(binary::MeshAttribute) * mesh.meshAttributes.size();
+                    meshDataSize = align(meshDataSize, 0x8);
                     attributes[i] = mesh.meshAttributes;
 
                     std::vector<std::array<float, 3>> pos;
@@ -577,7 +581,7 @@ namespace dsts::geom
                 std::vector<std::vector<binary::ShaderUniform>> materialUniforms(materials.size());
                 std::vector<std::vector<binary::ShaderSetting>> materialSettings(materials.size());
                 std::vector<size_t> materialHeaderBases(materials.size());
-                size_t materialsBase = meshDataBase + meshDataSize;
+                size_t materialsBase = align(meshDataBase + meshDataSize, 0x8);
                 header.material_offset = materialsBase;
 
                 size_t lastMaterialEnd = materialsBase;
@@ -706,12 +710,17 @@ namespace dsts::geom
                     f.seekp(meshesBase);
                     f.write(reinterpret_cast<char*>(meshHeaders.data()), sizeof(binary::MeshHeader) * meshHeaders.size());
                     for (int i = 0; i < meshHeaders.size() ; i++) {
+                        f.seekp( align(f.tellp(),0x8) );
                         f.write(reinterpret_cast<char*>(vertices[i].data()),vertices[i].size());
+                        f.seekp( align(f.tellp(),0x8) );
                         f.write(reinterpret_cast<char*>(matrixPalettes[i].data()), sizeof(uint32_t) * matrixPalettes[i].size());
+                        f.seekp( align(f.tellp(),0x8) );
                         f.write(reinterpret_cast<char*>(indices[i].data()), sizeof(uint16_t) * indices[i].size());
+                        f.seekp( align(f.tellp(),0x8) );
                         f.write(reinterpret_cast<char*>(attributes[i].data()), sizeof(binary::MeshAttribute) * attributes[i].size());
                     }
 
+                    f.seekp( align(f.tellp(),0x8) );
                     for (int i = 0; i < materialHeaders.size(); i++) {
                         f.seekp(materialHeaderBases[i]);
                         f.write(reinterpret_cast<char*>(&materialHeaders[i]), sizeof(binary::MaterialHeader));

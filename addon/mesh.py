@@ -225,6 +225,16 @@ def import_mesh_object(bl_mesh: dsts_formats.Mesh, armature_obj, materials_dict,
         mod = obj.modifiers.new(name="Armature", type='ARMATURE')
         mod.object = armature_obj
 
+    # --- FLAGS ---
+    mesh_data["DSTS_flag_0"] = bl_mesh.flag_0
+    mesh_data["DSTS_flag_1"] = bl_mesh.flag_1
+    mesh_data["DSTS_flag_2"] = bl_mesh.flag_2
+    mesh_data["DSTS_flag_3"] = bl_mesh.flag_3
+    mesh_data["DSTS_flag_4"] = bl_mesh.flag_4
+    mesh_data["DSTS_flag_5"] = bl_mesh.flag_5
+    mesh_data["DSTS_flag_6"] = bl_mesh.flag_6
+    mesh_data["DSTS_flag_7"] = bl_mesh.flag_7
+
     return obj
 
 def export_mesh_object(mesh_obj, skeleton = None, coord_transform = Matrix.Rotation(math.radians(-90), 4, 'X')):
@@ -353,6 +363,7 @@ def export_mesh_object(mesh_obj, skeleton = None, coord_transform = Matrix.Rotat
         mesh_out.set_index(vert_indices)
         mesh_out.set_weight(vert_weights.astype(np.float16))
 
+    # -- ATTRIBUTES --
     mat = mesh.materials[0]
     g_node = next(n for n in mat.node_tree.nodes if n.type == "GROUP" and n.node_tree.name == f"DSTS_Data-{mat.name}")
     data_node = next(n for n in g_node.node_tree.nodes if type(n) == data.material_nodes.ShaderDataNode)
@@ -367,6 +378,16 @@ def export_mesh_object(mesh_obj, skeleton = None, coord_transform = Matrix.Rotat
 
     mesh_out.mesh_attributes = attrs
     mesh_out.bytes_per_vertex = data_node.bytes_per_vertex
+    
+    # -- FLAGS --
+    mesh_out.flag_0 = mesh["DSTS_flag_0"]
+    mesh_out.flag_1 = mesh["DSTS_flag_1"]
+    mesh_out.flag_2 = mesh["DSTS_flag_2"]
+    mesh_out.flag_3 = mesh["DSTS_flag_3"]
+    mesh_out.flag_4 = mesh["DSTS_flag_4"]
+    mesh_out.flag_5 = mesh["DSTS_flag_5"]
+    mesh_out.flag_6 = mesh["DSTS_flag_6"]
+    mesh_out.flag_7 = mesh["DSTS_flag_7"]
 
     mesh_out.name = mesh.name
 
