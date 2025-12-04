@@ -12,7 +12,7 @@ from .data import material_nodes
 bl_info = {
     "name": "Dsts Formats",
     "author": "Nymic_Razor",
-    "version" : (0, 0 ,1),
+    "version" : (0, 1 ,0),
     "blender": (4, 5, 4),
     "category": "Import/Export",
 }
