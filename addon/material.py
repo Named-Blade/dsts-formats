@@ -342,7 +342,7 @@ def resolve_material(collection, mat, mat_data, tex_folder):
                             bpy.types.ShaderNodeSeparateColor)):
             columns["utility"].append(n)
         elif isinstance(n, bpy.types.ShaderNodeGroup) and n.node_tree.name == f"{collection.name}_Eye_Offset":
-            columns["input"].append(n)
+            columns["shader_data_2"].append(n)
 
     # Define X-column indices
     column_map = {
