@@ -380,14 +380,14 @@ def export_mesh_object(mesh_obj, skeleton = None, coord_transform = Matrix.Rotat
     mesh_out.bytes_per_vertex = data_node.bytes_per_vertex
     
     # -- FLAGS --
-    mesh_out.flag_0 = mesh["DSTS_flag_0"]
-    mesh_out.flag_1 = mesh["DSTS_flag_1"]
-    mesh_out.flag_2 = mesh["DSTS_flag_2"]
-    mesh_out.flag_3 = mesh["DSTS_flag_3"]
-    mesh_out.flag_4 = mesh["DSTS_flag_4"]
-    mesh_out.flag_5 = mesh["DSTS_flag_5"]
-    mesh_out.flag_6 = mesh["DSTS_flag_6"]
-    mesh_out.flag_7 = mesh["DSTS_flag_7"]
+    mesh_out.flag_0 = mesh.get("DSTS_flag_0", True)
+    mesh_out.flag_1 = mesh.get("DSTS_flag_1", False)
+    mesh_out.flag_2 = mesh.get("DSTS_flag_2", False)
+    mesh_out.flag_3 = mesh.get("DSTS_flag_3", False)
+    mesh_out.flag_4 = mesh.get("DSTS_flag_4", False)
+    mesh_out.flag_5 = mesh.get("DSTS_flag_5", False)
+    mesh_out.flag_6 = mesh.get("DSTS_flag_6", False)
+    mesh_out.flag_7 = mesh.get("DSTS_flag_7", False)
 
     mesh_out.name = mesh.name
 
